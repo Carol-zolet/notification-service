@@ -5,12 +5,10 @@
     "type":  "commonjs",
     "scripts":  {
                     "dev":  "ts-node-dev --respawn --transpile-only src/infra/main.ts",
+                    "build":  "tsc",
                     "start":  "node dist/infra/main.js",
-                    "build":  "tsc -p tsconfig.json",
-                    "prisma:generate":  "npx prisma generate --schema=./src/infra/database/prisma/schema.prisma",
-                    "prisma:migrate":  "npx prisma migrate dev --schema=./src/infra/database/prisma/schema.prisma",
-                    "prisma:seed":  "ts-node --project tsconfig.json prisma/seed.ts",
-                    "test":  "jest --runInBand"
+                    "reprocess:failed":  "ts-node src/scripts/reprocess-failed.ts",
+                    "reprocess:failed:rest":  "ts-node src/scripts/reprocess-failed-rest.ts"
                 },
     "dependencies":  {
                          "@prisma/client":  "^5.10.0",
