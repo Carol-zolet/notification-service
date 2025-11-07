@@ -1,0 +1,166 @@
+import { PrismaClient } from '@prisma/client';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const prisma = new PrismaClient();
+
+type Registro = {
+  nome: string;
+  unidade: string;
+  email: string;
+};
+
+function normalizeContent(text: string): string {
+  let t = text.replace(/\uFEFF/g, '');
+  t = t.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  t = t.replace(/\t/g, ',');
+  const first = t.split('\n')[0] ?? '';
+  if (first.includes(';')) t = t.replace(/;/g, ',');
+  return t;
+}
+
+function splitLine(line: string): string[] {
+  return line.split(',').map(v => v.replace(/^"(.*)"$/, '$1').trim());
+}
+
+function findIndex(headers: string[], candidates: string[]): number {
+  const lower = headers.map(h => h.toLowerCase());
+  for (const c of candidates) {
+    const i = lower.indexOf(c.toLowerCase());
+    if (i !== -1) return i;
+  }
+  return -1;
+}
+
+async function main() {
+  const file = path.join(__dirname, 'colaboradores.csv');
+  if (!fs.existsSync(file)) {
+    console.error('ERRO: prisma/colaboradores.csv nÃ£o encontrado.');
+    process.exit(1);
+  }
+
+  const text = normalizeContent(fs.readFileSync(file, 'utf8'));
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  if (lines.length < 2) {
+    console.error('ERRO: CSV sem dados.');
+    process.exit(1);
+  }
+
+  const headers = splitLine(lines[0]);
+  const idxNome = findIndex(headers, ['colaborador', 'nome']);
+  const idxUnidade = findIndex(headers, ['unidade', 'filial']);
+  const idxEmail = findIndex(headers, ['email pessoal', 'email', 'e-mail pessoal', 'e-mail']);
+
+  if ([idxNome, idxUnidade, idxEmail].some(i => i === -1)) {
+    console.error('ERRO: CabeÃ§alho invÃ¡lido. Lido:', headers);
+    process.exit(1);
+  }
+
+  const registros: Registro[] = [];
+  const erros: { line: number; motivo: string; cols: string[] }[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = splitLine(lines[i]);
+    const nome = cols[idxNome]?.trim();
+    const unidade = cols[idxUnidade]?.trim();
+    const email = cols[idxEmail]?.trim();
+    if (!nome || !unidade || !email) {
+      erros.push({ line: i + 1, motivo: 'Campos vazios', cols });
+      continue;
+    }
+    registros.push({ nome, unidade, email });
+  }
+
+  // Dedup por email
+  const seen = new Set<string>();
+  const dedup = registros.filter(r => {
+    const k = r.email.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+
+  console.log(`Linhas vÃ¡lidas: ${dedup.length} | Erros: ${erros.length}`);
+  if (erros.length) {
+    console.warn('Exemplos (atÃ© 5):');
+    erros.slice(0, 5).forEach(e =>
+      console.warn(`Linha ${e.line}: ${e.motivo} -> ${e.cols.join(' | ')}`));
+  }
+
+  if (!dedup.length) {
+    console.error('Nada a importar.');
+    process.exit(1);
+  }
+
+  const res = await prisma.colaborador.createMany({
+    data: dedup,
+    skipDuplicates: true,
+  });
+
+  console.log(`ImportaÃ§Ã£o concluÃ­da. Novos inseridos: ${res.count}`);
+
+  const unidades = await prisma.colaborador.findMany({
+    select: { unidade: true },
+    distinct: ['unidade'],
+    orderBy: { unidade: 'asc' },
+  });
+
+  console.log(`Unidades (${unidades.length}):`);
+  unidades.forEach((u: any) => console.log(` - ${u.unidade}`));
+}
+
+main()
+  .catch(e => {
+    console.error('ERRO seed:', e);
+    process.exit(1);
+  
+  async findPendingUntil(date: Date): Promise<Notification[]> {
+    const results = await this.prisma.notification.findMany({
+      where: {
+        scheduleAt: { lte: date },
+        sentAt: null
+      },
+      orderBy: { scheduleAt: 'asc' }
+    });
+
+    return results.map((r: any) => new Notification(
+      r.recipientEmail,
+      r.recipientName,
+      r.channel,
+      r.subject,
+      r.body,
+      r.scheduleAt,
+      r.sourceSystem,
+      r.id,
+      r.sentAt,
+      r.createdAt
+    ));
+
+  async findPendingUntil(date: Date): Promise<Notification[]> {
+    const results = await this.prisma.notification.findMany({
+      where: {
+        scheduleAt: { lte: date },
+        sentAt: null
+      },
+      orderBy: { scheduleAt: 'asc' }
+    });
+
+    return results.map((r: any) => new Notification(
+      r.recipientEmail,
+      r.recipientName,
+      r.channel,
+      r.subject,
+      r.body,
+      r.scheduleAt,
+      r.sourceSystem,
+      r.id,
+      r.sentAt,
+      r.createdAt
+    ));
+  }
+  }
+})
+  .finally(() => prisma.$disconnect());
+
+

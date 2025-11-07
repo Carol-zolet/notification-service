@@ -1,0 +1,40 @@
+# Node
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Database
+*.db
+*.db-journal
+dev.db
+prisma/dev.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backup
+_backup_*/
+
+# Python
+__pycache__/
+*.pyc
+*.py
+
+# Temp
+tmp/
+temp/
+*.tmp

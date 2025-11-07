@@ -1,0 +1,34 @@
+import * as XLSX from 'xlsx';
+
+export type RawRow = Record<string, any>;
+export type ParsedRow = { filial: string; name: string; email: string };
+
+const normalizeHeader = (h: string) =>
+  h?.toString().trim().toLowerCase().replace(/\s+/g, ' ');
+
+export function parseCollaborators(buffer: Buffer, filename: string): ParsedRow[] {
+  const wb = XLSX.read(buffer, { type: 'buffer' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows: RawRow[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+  const mapped: ParsedRow[] = [];
+
+  for (const row of rows) {
+    const keys = Object.keys(row);
+    const keyMap = new Map(keys.map((k) => [normalizeHeader(k), k]));
+
+    const filialKey = keyMap.get('filial') ?? keyMap.get('branch') ?? keyMap.get('unidade') ?? keyMap.get('loja');
+    const nameKey = keyMap.get('nome') ?? keyMap.get('name') ?? keyMap.get('colaborador');
+    const emailKey = keyMap.get('email') ?? keyMap.get('e-mail') ?? keyMap.get('mail');
+
+    const filial = filialKey ? String(row[filialKey]).trim() : '';
+    const name = nameKey ? String(row[nameKey]).trim() : '';
+    const email = emailKey ? String(row[emailKey]).trim() : '';
+
+    if (filial || name || email) {
+      mapped.push({ filial, name, email });
+    }
+  }
+
+  return mapped;
+}
