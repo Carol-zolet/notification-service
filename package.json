@@ -8,7 +8,9 @@
         "start": "node dist/main.js",
         "dev": "ts-node-dev --respawn --transpile-only src/main.ts",
         "test": "jest",
-        "seed": "ts-node prisma/seed.ts"
+        "seed": "ts-node prisma/seed.ts",
+        "prisma:generate": "prisma generate",
+        "prisma:migrate": "prisma migrate deploy"
     },
     "dependencies": {
         "@prisma/client": "^5.10.0",
