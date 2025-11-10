@@ -46,57 +46,59 @@ export class NotificationWorker {
       const pending = await this.prisma.notification.findMany({
         where: {
           status: "pending",
-          scheduledAt: { lte: now },
+          scheduledFor: { lte: now },  // ← CORRIGIDO
         },
-        orderBy: { scheduledAt: "asc" },
-        take: 1000,
+        orderBy: { scheduledFor: "asc" },  // ← CORRIGIDO
+        take: this.batchSize,
       });
 
-      if (!pending.length) {
+      if (pending.length === 0) {
         console.log(" Worker: nada pendente.");
         return;
       }
 
-      let processed = 0;
-      let failed = 0;
+      console.log(` Worker processando ${pending.length} notificações...`);
 
-      for (let i = 0; i < pending.length; i += this.batchSize) {
-        const lote = pending.slice(i, i + this.batchSize);
-        const results = await Promise.all(
-          lote.map(async (n) => {
-            try {
-              await this.emailService.send({
-                to: n.to,
-                subject: n.subject || "Notificação",
-                html: n.body || "",
-              });
-              await this.prisma.notification.update({
-                where: { id: n.id },
-                data: {
-                  status: "sent",
-                  sentAt: new Date(),
-                  errorMessage: null,
-                },
-              });
-              return { ok: true };
-            } catch (e: any) {
-              await this.prisma.notification.update({
-                where: { id: n.id },
-                data: {
-                  status: "failed",
-                  errorMessage: e.message,
-                  retryCount: { increment: 1 },
-                },
-              });
-              return { ok: false, error: e.message };
-            }
-          })
-        );
-        processed += results.filter((r) => r.ok).length;
-        failed += results.filter((r) => !r.ok).length;
+      for (const n of pending) {
+        try {
+          if (this.emailService.sendWithAttachments) {
+            await this.emailService.sendWithAttachments(
+              n.email,       // ← CORRIGIDO
+              n.subject,
+              n.message || "",  // ← CORRIGIDO
+              []
+            );
+          } else {
+            await (this.emailService as any).send({
+              to: n.email,       // ← CORRIGIDO
+              subject: n.subject,
+              html: n.message || "",  // ← CORRIGIDO
+            });
+          }
+
+          await this.prisma.notification.update({
+            where: { id: n.id },
+            data: {
+              status: "sent",
+              sentAt: new Date(),
+              // errorMessage removido ← CORRIGIDO
+            },
+          });
+        } catch (e: any) {
+          console.error(` Falha ao enviar notificação ${n.id}:`, e.message);
+          await this.prisma.notification.update({
+            where: { id: n.id },
+            data: {
+              status: "failed",
+              retryCount: n.retryCount + 1,
+              // errorMessage removido ← CORRIGIDO
+            },
+          });
+        }
       }
 
-      console.log(` Worker ciclo: processed=${processed} failed=${failed} duration=${Date.now()-start}ms`);
+      const elapsed = Date.now() - start;
+      console.log(` Worker: ${pending.length} processadas em ${elapsed}ms`);
     } catch (e: any) {
       console.error(" Erro no worker:", e.message);
     }

@@ -3,7 +3,6 @@ import multer from "multer";
 import { PrismaClient } from "@prisma/client";
 import { NodemailerService } from "../services/nodemailer.service";
 import { MockEmailService } from "../services/mock-email.service";
-import { ReprocessFailedNotificationsUseCase } from "../../application/use-cases/reprocess-failed-notifications.use-case";
 
 export const router = Router();
 const prisma = new PrismaClient();
@@ -36,16 +35,15 @@ router.get("/v1/colaboradores", async (_req, res) => {
 // Notificações (simples criar/listar)
 router.post("/v1/notifications", async (req, res) => {
   try {
-    const { to, subject, body, scheduledAt, unidade } = req.body;
-    if (!to) return res.status(400).json({ error: "Campo 'to' obrigatório" });
+    const { email, subject, message, scheduledAt, unidade } = req.body;
+    if (!email) return res.status(400).json({ error: "Campo 'email' obrigatório" });
     const created = await prisma.notification.create({
       data: {
-        to,
+        email,        // ← em vez de 'to'
         subject,
-        body,
-        unidade,
-        status: scheduledAt ? "pending" : "pending", // sempre pending para worker
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : new Date(),
+        message,
+        scheduledFor: scheduledAt ? new Date(scheduledAt) : new Date(), // ← campo correto
+        status: "pending",
       },
     });
     res.status(201).json(created);
@@ -72,17 +70,15 @@ router.get("/v1/notifications/failed", async (req, res) => {
     const items = await prisma.notification.findMany({
       where,
       take: Math.min(Number(limit) || 100, 1000),
-      orderBy: { updatedAt: "desc" },
+      orderBy: { createdAt: "desc" },  // ← em vez de updatedAt
       select: {
         id: true,
-        to: true,
+        email: true,     // ← em vez de 'to'
         subject: true,
-        unidade: true,
-        scheduledAt: true,
+        message: true,   // ← em vez de 'body'
+        status: true,
+        createdAt: true,
         sentAt: true,
-        updatedAt: true,
-        errorMessage: true,
-        retryCount: true,
       },
     });
 
@@ -134,9 +130,12 @@ router.post("/v1/notifications/reprocess", async (req, res) => {
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (file.mimetype === "application/pdf") cb(null, true);
-    else cb(new Error("Apenas PDF é permitido"), false);
+  fileFilter: (_req: any, file: any, cb: any) => {
+    if (file.mimetype === "application/pdf") {
+      cb(null, true);
+    } else {
+      cb(new Error("Apenas PDF é permitido"));
+    }
   },
 });
 
@@ -213,12 +212,14 @@ router.post("/v1/payslips/process", upload.single("pdfFile"), async (req, res) =
       const results = await Promise.all(
         lote.map(async (c) => {
           try {
-            await emailService.sendWithAttachments({
-              to: c.email,
-              subject,
-              html: renderTemplate(message, { nome: c.nome, unidade: c.unidade }),
-              attachments: [{ filename, content: buffer }],
-            });
+            const subjectRendered = renderTemplate(subject, { nome: c.nome, unidade: c.unidade });
+            const messageRendered = renderTemplate(message, { nome: c.nome, unidade: c.unidade });
+            await emailService.sendWithAttachments(
+              c.email,  // to
+              subjectRendered,    // subject
+              messageRendered,    // body
+              [{ filename, content: buffer }]  // attachments
+            );
             return { ok: true };
           } catch (e: any) {
             return { ok: false, error: e.message };
@@ -233,12 +234,11 @@ router.post("/v1/payslips/process", upload.single("pdfFile"), async (req, res) =
     try {
       await prisma.sendHistory.create({
         data: {
-          unidade: unidade || "Teste",
+          unidade,
           subject,
-          message,
-          totalRecipients: total,
-          processed,
-          failed,
+          total,             // ← em vez de totalRecipients
+          dryRun: String(dryRun).toLowerCase() === "true",
+          testRecipient: testRecipient ?? null,
         },
       });
     } catch { /* ignora */ }
@@ -275,6 +275,226 @@ router.get("/v1/payslips/history", async (req, res) => {
   ]);
 
   res.json({ total, page: Number(page), limit: take, items });
+});
+
+
+
+// ==========================================
+// DEBUG ENDPOINTS
+// ==========================================
+
+// DEBUG - Total de colaboradores
+router.get('/debug/total', async (req, res) => {
+  try {
+    const total = await prisma.colaborador.count();
+    res.json({ total, timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(500).json({ error: String(error) });
+  }
+});
+
+// DEBUG - Listar todas as unidades com contagem
+router.get('/debug/unidades', async (req, res) => {
+  try {
+    const unidades = await prisma.colaborador.groupBy({
+      by: ['unidade'],
+      _count: { id: true },
+      orderBy: { unidade: 'asc' },
+    });
+    
+    res.json(unidades.map(u => ({ unidade: u.unidade, count: u._count.id })));
+  } catch (error) {
+    res.status(500).json({ error: String(error) });
+  }
+});
+
+// DEBUG - Colaboradores por unidade
+router.get('/debug/colaboradores-por-unidade', async (req, res) => {
+  try {
+    const colaboradores = await prisma.colaborador.findMany({
+      select: { unidade: true },
+    });
+    
+    const grouped = {};
+    colaboradores.forEach(c => {
+      grouped[c.unidade] = (grouped[c.unidade] || 0) + 1;
+    });
+    
+    res.json(grouped);
+  } catch (error) {
+    res.status(500).json({ error: String(error) });
+  }
+});
+
+
+// ==========================================
+// ADMIN ENDPOINTS
+// ==========================================
+
+// GET /api/v1/admin/colaboradores - Listar com filtro por unidade
+router.get('/admin/colaboradores', async (req, res) => {
+  try {
+    const { unidade, skip = 0, take = 100 } = req.query;
+    
+    const where = unidade ? { unidade: String(unidade) } : {};
+    
+    const colaboradores = await prisma.colaborador.findMany({
+      where,
+      skip: Number(skip),
+      take: Math.min(Number(take), 100),
+      orderBy: { nome: 'asc' },
+    });
+    
+    res.json(colaboradores);
+  } catch (error) {
+    res.status(500).json({ error: String(error) });
+  }
+});
+
+// GET /api/v1/admin/unidades - Listar todas as unidades
+router.get('/admin/unidades', async (req, res) => {
+  try {
+    const unidades = await prisma.colaborador.groupBy({
+      by: ['unidade'],
+      _count: { id: true },
+      orderBy: { unidade: 'asc' },
+    });
+    
+    res.json(unidades.map(u => ({ 
+      filial: u.unidade, 
+      unidade: u.unidade,
+      count: u._count.id 
+    })));
+  } catch (error) {
+    res.status(500).json({ error: String(error) });
+  }
+});
+
+// POST /api/v1/admin/colaboradores - Criar colaborador
+router.post('/admin/colaboradores', async (req, res) => {
+  try {
+    const { nome, email, unidade } = req.body;
+    
+    if (!nome || !email || !unidade) {
+      return res.status(400).json({ error: 'Nome, email e unidade sao obrigatorios' });
+    }
+    
+    const existe = await prisma.colaborador.findUnique({
+      where: { email },
+    });
+    
+    if (existe) {
+      return res.status(400).json({ error: 'Email ja existe' });
+    }
+    
+    const colaborador = await prisma.colaborador.create({
+      data: { nome, email, unidade },
+    });
+    
+    res.status(201).json(colaborador);
+  } catch (error) {
+    res.status(500).json({ error: String(error) });
+  }
+});
+
+// PUT /api/v1/admin/colaboradores/:id - Atualizar colaborador
+router.put('/admin/colaboradores/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, email, unidade } = req.body;
+    
+    const colaborador = await prisma.colaborador.update({
+      where: { id },
+      data: {
+        ...(nome && { nome }),
+        ...(email && { email }),
+        ...(unidade && { unidade }),
+      },
+    });
+    
+    res.json(colaborador);
+  } catch (error) {
+    res.status(500).json({ error: String(error) });
+  }
+});
+
+// DELETE /api/v1/admin/colaboradores/:id - Deletar colaborador
+router.delete('/admin/colaboradores/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    await prisma.colaborador.delete({
+      where: { id },
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: String(error) });
+  }
+});
+
+
+// ==========================================
+// PAYSLIPS ENDPOINT
+// ==========================================
+
+// POST /api/v1/payslips/distribuir
+router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) => {
+  try {
+    const { unidade, subject, message } = req.body;
+    const pdfBuffer = req.file?.buffer;
+
+    if (!pdfBuffer || !unidade) {
+      return res.status(400).json({
+        success: false,
+        message: 'PDF e unidade sao obrigatorios',
+      });
+    }
+
+    // Buscar colaboradores da unidade
+    const colaboradores = await prisma.colaborador.findMany({
+      where: { unidade: unidade },
+      select: { id: true, nome: true, email: true, unidade: true },
+    });
+
+    if (colaboradores.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `Nenhum colaborador encontrado para ${unidade}`,
+      });
+    }
+
+    let processed = 0;
+    let failed = 0;
+
+    // Processar cada colaborador
+    for (const col of colaboradores) {
+      try {
+        // TODO: Aqui vocÃª pode adicionar logica de envio de email
+        // Por enquanto, apenas simulamos o envio
+        console.log(`[PAYSLIP] Enviando para ${col.nome} (${col.email})`);
+        processed++;
+      } catch (error) {
+        console.error(`Erro ao enviar para ${col.email}:`, error);
+        failed++;
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Holerites processados',
+      processed,
+      failed,
+      total: colaboradores.length,
+      unidade: unidade,
+    });
+  } catch (error) {
+    console.error('Erro ao distribuir holerites:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao distribuir holerites',
+    });
+  }
 });
 
 export default router;

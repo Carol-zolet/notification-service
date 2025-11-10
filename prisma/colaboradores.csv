@@ -118,9 +118,211 @@ Felipe Issacar Levi Machado de Almeida,OSÓRIO,felipeissacar@gmail.com
 FELIPE MARTINI SCHIZZI,Bento Gonçalves,felipemartinischizzi777@gmail.com
 Felipe Scherf Schuquel,Carazinho,felipeschuquell@gmail.com
 Felipe Schneider,SÃO LEOPOLDO,felipe.sch91@gmail.com
-Fernando Ramos Balbueno,Poa-Restinga,proffebalbueno@gmail.com
-Frederico Passos Boemeke,Pelotas 2,fred.passossls@gmail.com,{,"name": "microsservicos-alerta",,"version": "1.0.0",,"main": "src/infra/main.ts",,"scripts": {,"dev": "ts-node-dev --respawn --transpile-only src/infra/main.ts",,"start": "node dist/infra/main.js",,"build": "tsc",,"prisma:seed": "ts-node --project tsconfig.json prisma/seed.ts",,"prisma:migrate": "prisma migrate dev",,"prisma:generate": "prisma generate",},,"dependencies": {,"@prisma/client": "^6.19.0",,"express": "^4.21.1",},,"devDependencies": {,"@types/node": "latest",,"@types/express": "latest",,"prisma": "^6.19.0",,"ts-node": "^10.9.2",,"ts-node-dev": "^2.0.0",,"typescript": "^5.9.3",}
-},datasource db {,provider = "sqlite",url,= "file:./dev.db"
-},generator client {,provider = "prisma-client-js"
-},model Colaborador {,id,String,@id @default(uuid()),nome,String,email,String,@unique,filial,String,createdAt DateTime @default(now()),@@index([filial]),@@map("colaboradores")
-},,
+Fernando Ramos Balbueno,Poa - Restinga,proffebalbueno@gmail.com
+Frederico Passos Boemeke,Pelotas 2,fred.passossls@gmail.com
+GABRIELA DAS CHAGAS,Novo Hamburgo,gabichagas48@gmail.com
+GABRIELA MOREIRA DE SOUSA LACERDA,Novo Hamburgo 2,gabrielamdlacerda@icloud.com
+GABRIELA PACHECO,Novo Hamburgo,gabyxxpache@gmail.com
+Gabriella Knevitz Jacoby,Poa - Restinga,gabriellajacoby001@gmail.com
+Gabrielle Watuzi Dias Pinheiro,Sapucaia do Sul,watuzijobs@gmail.com
+Gabriel Luís Torres Balcarcel,SÃO LEOPOLDO,gabrielbalcarcel@gmail.com
+Gabriel Omar Morbini,Passo Fundo,gabriel_morbini@hotmail.com
+GABRIEL PEREIRA DA SILVA DOMINGOS,Poa -Vicente,gpbiel03@gmail.com
+GABRIEL SANTOS DE OLIVEIRA,Poa - Juca Batista,gabriel.xaca@gmail.com
+Gabriely Moraes Machado,Rio Grande,machadogabriely228@gmail.com
+GABRYEL HERMANN,Poa - Otto,gabryel_hermann@outlook.com
+GIOVANI TURMINA DA SILVA,Videira,giovaniturminadasilva@gmail.com
+Grace Kelly Lopes Figueira,Passo Fundo 3,glopesfigueira@gmail.com
+Gregory Vieira Harkovtzeff,Poa - Otto,gregory.harkovtzeff@gmail.com
+GUILERME PROVENZZI RUI,Nova Prata,guilermeprovenzzi@gmail.com
+Guilherme de Negri Scheitt,SÃO LEOPOLDO,guipersonaltreino@gmail.com
+GUILHERME HENRIQUE SIMON BORGES,Vera Cruz,guilhermesimon225@gmail.com
+Guilherme Job Lonhi,Santa Cruz,gjoblonghi@gmail.com
+Guilherme Mezzomo De Carli,Nova Prata,decarlimezzomo.gui@gmail.com
+Gustavo Canary Cieglinsky,Rio Grande,gucieglinsky14@gmail.com
+GUSTAVO DOS SANTOS TORMES,Poa - Otto,gustavostormes@gmail.com
+GUSTAVO FRANÇA DOS SANTOS,Santa Cruz,gustavofrancadossantos9@gmail.com
+Gustavo Freitas da Silva,Cachoeirinha,gustavofreitas96@icloud.com
+Gustavo Nunes Rossato de Almeida,Sapucaia do Sul,nunesgustavo0117@gmail.com
+Gustavo Wollmeister,Carazinho,wollmeister11@hotmail.com
+Heloísa Overbeck,Vera Cruz,theoverbeck@gmail.com
+Henrique Lacerda Das Chagas,São Gabriel,henriquelacerda44@gmail.com
+Hindaiá de Almeida Vieira,Passo Fundo,hindaiaa021@gmail.com
+Igor da Silva dos Santos,São Gabriel,igoredfsc@gmail.com
+Inajara Prestes Bispo,Poa - Restinga,inajara.prestes@icloud.com
+ISABELLA FREITAS MOURA,Taquara,isamouraf@gmail.com
+Isadora da Silva,Videira,silva.pvt@icloud.com
+Isadora Lobo,Poa - Otto,isadoralobo.b@gmail.com
+ISMAEL DE OLIVEIRA FREITAS,São Gabriel,ismaeliof@hotmail.com
+ISMAEL FREIRE DE BAIRROS,Santa Cruz,ismael04bairros@gmail.com
+Iuri Gabriel Goetz de Chaves,Serafina Correa,igoetzdechaves@gmail.com
+Jackson Alves Nunes,Estância Velha,jacksonfera17@gmail.com
+JACSON LISÂNGELO BASSI,Passo Fundo,jacsonlbassi@gmail.com
+Jadna Brenda Silva dos Santos,Gravataí,jadnasantos456@gmail.com
+Jaine Peres da Silva,Pelotas 2,jaineperes9@gmail.com
+JAIRO SIQUEIRA,Novo Hamburgo,jairosiqueira47@gmail.com
+JANINE LARISSA DA SILVA,Vera Cruz,janine.larissa1457@gmail.com
+JAQUELINE CAMARGO MOREIRA,Videira,jaquecamargo610@gmail.com
+JAQUELINE MASCHIO ROSALEM,Nova Prata,jaque.maschio@gmail.com
+Jeferson Vieira Salatino,Poa - Otto,jeff.salatino@hotmail.com
+JENNIFER MARISA DE LIMA MARTINS,Poa - Otto,limajenny411@gmail.com
+JOÃO HENRIQUE SOARES DOS SANTOS,Cachoeirinha,joaohenrique.s.soares@gmail.com
+JOÃO PEDRO DIAS MORAES,Poa - Ipiranga,joao.diasmoraes10@gmail.com
+JOÃO RICARDO CANDEIA ENDERLE,Joaçaba,joaor.enderle@hotmail.com
+João Victor Rodrigues Muller,Passo Fundo 2,joaorodriguespersonal01@gmail.com
+Joao Vitor de Moraes Correa,Poa - Juca Batista,joaovitormoraes@outlook.com
+JOÃO VITOR KAMPHORST,Carazinho,jv30mpus@gmail.com
+JOCIMAR CASTRO,Carlos Barbosa,JOCIMARCASTROMU@GMAIL.COM
+JONAS NUNES DA SILVA,Joaçaba,nunes.jonas_201@hotmail.com
+Jonathan Silva Brasil,OSÓRIO,jonathanbrasil1407@gmail.com
+JORGE ANDREI ANTONIA MARIA,Tramandaí,andreinatalia49@gmail.com
+Joseane Mattos da Silva,Poa - Otto,mattosj922@gmail.com
+JOSE AUGUSTO BAGATINI,Sapucaia do Sul,joseaugustobagatini2017@gmail.com
+JUAN LEMOS DE OLIVEIRA,Poa - Ipiranga,juanlemosdeoliveira@hotmail.com
+JULIANO FREITAS DE SOUZA,Gravataí,julianosouzapersonal@gmail.com
+Karina Cristine Schmidt,Carlos Barbosa,schmidtkarina08@gmail.com
+KARINA GARBIN,Matriz,administrativo@26fit.com.br
+Karoline Teixeira Duzac,Poa - Restinga,karolduzac@hotmail.com
+Kauan Valim Saraiva Brittes,Campo Bom,kauanvalimsaraiva@gmail.com
+KEAN NUNES DE BORBA,Pelotas,kean-borba@hotmail.com
+KELEN LUZ ENES,Guaiba,kelenluz24@gmail.com
+Kéli Camargo,Passo Fundo 3,keli.pf17@gmail.com
+Kleverson Ribeiro de Vargas,Passo Fundo 3,kleversonribeiro05@gmail.com
+LADY LAURA BATISTELLO,Nova Prata,dp2@26fit.com.br
+Laiza Gabriela Lemos da Silva,SÃO LEOPOLDO,laizalemos4@gmail.com
+Laura Rossi Fontella,Sapucaia do Sul,frlaura2011@gmail.com
+Laura Vieira da Silva,Farroupilha,vieira_laura118@icloud.com
+LEANDRO BORBA,Nova Prata,leborba@gmail.com
+LEANDRO LOPES SANTOS DE AZAMBUJA,Bagé,grupocorraeviva@gmail.com
+Leandro Rafael Klaus,Novo Hamburgo 2,leandroklauscb@gmail.com
+LEONARDO DA SILVA GIESTA,Rio Grande,leo_giesta@hotmail.com
+LEONARDO DE SOUZA TELLES,Poa - Juca Batista,leonard.telles762@gmail.com
+LEONARDO DOS REIS SANTOS,Poa - Juca Batista,leonardo_adds@hotmail.com
+Leonardo Kaiel Garcia,Novo Hamburgo,kaielgarcia290505@gmail.com
+Letícia Francieli de Lima Crija,Estância Velha,leticiacrija321@gmail.com
+LOUISE ISABELLE MARTINS DE ALMEIDA,Nova Prata,louisealmeida64@gmail.com
+Luana Kunsler De Assunção Dos Santos,SÃO LEOPOLDO,Luana-siforosa@hotmail.com
+LUCAS DIAS DE PÁDUA,Passo Fundo 2,lucas.dias.1999@hotmail.com
+Lucas Eduardo de Lima Martins,Poa - Juca Batista,lucas.eduardo.07@icloud.com
+Lucas Oliveira Fernandes,Gravataí,luccasolifernandes@gmail.com
+LUCAS SAMUEL FERRAZ,Passo Fundo,ferrazpersonall@gmail.com
+Lucas Santos de Lima,Joaçaba,lucas98318083@gmail.com
+LUCAS TEIXEIRA DE MATTOS,Poa - Ipiranga,lucas-mattos31@hotmail.com
+Luca Zelenko Ayres,Esteio,lucazelenko@gmail.com
+Luciana Rieth Souza,OSÓRIO,luriethpqd@gmail.com
+LUCIANE CIGNACHI ALVES,Carlos Barbosa,lucianecignachialves@gmail.com
+LUÍS ANDRÉ DOS SANTOS DE COSTA,Serafina Correa,luisandredecosta@gmail.com
+Luis Cesar Zama Junior,Campo Bom,zama_jr@outlook.com
+LUIS FERNANDO CORREA MACANAN,Nova Prata,luisfernandocorreamacanan@gmail.com
+Luis Gustavo Ziolkoski,Farroupilha,luisgustavoziolkoski@gmail.com
+LUIS HENRIQUE CIELLO,Nova Prata,pingciello06@hotmail.com
+Luís Henrique da Silva Timm,SÃO LEOPOLDO,luis.timm02@gmail.com
+MAGDA BEATRIZ SILVA PALHARINI,Sapiranga,magdapalharini@gmail.com
+Maiara Cristina Rodrigues,Matriz,amaiaracrodrigues@gmail.com
+MAIARA RODRIGUES SANTAREM,Esteio,maiarasantarem1995@gmail.com
+Marcelo Fernandes Paz da Silva,Farroupilha,marceloferdnand@gmail.com
+MARCOS ANTONIO PEREIRA,Poa - Ipiranga,mantoniopereiraa@gmail.com
+Maria Augusta Claas Maia,Novo Hamburgo,m.augustacmaia@gmail.com
+MARIA CAROLINA BIER VIEIRA,Sapucaia do Sul,mariacarolinabier@gmail.com
+MARIA EDUARDA PELLISOLI TEIXEIRA,Gravataí,maria.pellisoli.teixeira@gmail.com
+Maria Eduarda Ribeiro Nascimento,Bento Gonçalves,meribeiro46@gmail.com
+Maria Letícia Manske de Uzeda,Passo Fundo,leticiauzeda05@gmail.com
+MARIA LUISA DA SILVA BRITO DE CAMPOS,Santa Cruz,mlmalu949@gmail.com
+MARIANA LOPES DE ABREU,Joaçaba,marianalopesdeabreu10@gmail.com
+MARIA PAULA MACHADO,Carlos Barbosa,maryapaulabm28@gmail.com
+Marindia Didone,Nova Prata,marindia.didone@hotmail.com
+MATEUS BRONZONI ZIECH,Nova Prata,mateusbronzoneziech@gmail.com
+MATEUS BUSATTO,Nova Prata,mateusbusatto@hotmail.com
+MATHEUS ALLEBRANDT,Videira,matheus_allebrandt@hotmail.com
+MATHEUS GOLANSKI DE FRAGA,Guaiba,matheusgolanski@gmail.com
+Matheus Gonçalves Navarrina Nobrega,Novo Hamburgo 2,matheusgnobrega@icloud.com
+Matheus Lavratti de Mattos,Joaçaba,theusmattos15@gmail.com
+Matheus Leonetti Pereira,Poa - Restinga,matleonetti2023@gmail.com
+Mauricio Pereira Mariante,Lajeado,mauricio_mariante@hotmail.com
+MICHAEL ACOSTA SARAIVA,Bagé,mikaelacosta.ge@gmail.com
+MICHELE CALHEAO COLUSSI,Passo Fundo 3,mihcolussi@gmail.com
+Miguel Guilherme Silva de Oliveira,Poa -Vicente,miguelgoliveira03@gmail.com
+MILENA COSTA PRADO JACUBOSKI,Passo Fundo 3,milenacoataprado@icloud.com
+MILENE CARDOSO GRAVI KLEIN,Rio Grande,milenegrav@hotmail.com
+Milene de Paula de Souza,Carazinho,milenepsouza993@gmail.com
+Moises Trindade Mascarenhas,Gravataí 2,moises_mv1@hotmail.com
+MONIQUE DANIELE HAUSCHILD,Lajeado,moniquehauschild73@gmail.com
+Murilo da Silva,Joaçaba,silvamurilo355@gmail.com
+Natan da Cruz,Guaporé,natan.dacruz23@gmail.com
+Nataniele Leal Silveira,Pelotas,natanielesilveiraleal4@gmail.com
+NATHALIA EUGENIO DE LIMA,Passo Fundo 2,nathaliaeugenio.lima@gmail.com
+NATHALIA LUZ MOTA,Sapucaia do Sul,nathaliamottaluz@gmail.com
+NEDILSON DA SILVA SANTOS,Sapiranga,nedilsondasilvasantos47@gmail.com
+NICOLAS MACHADO DOS SANTOS MALTA,Gravataí,nicolas.machado.9708@gmail.com
+Nikol Andrea Barco Ruiz,Nova Prata,mahangatos@gmail.com
+Osmar Alberto Riegel Neto,Taquara,osmar.riegel.neto@gmail.com
+Patrícia Pereira Ortiz,Rio Grande,patriciapereiraortiz2@gmail.com
+PATRICIA SILVA ESCOUTO,Guaiba,patriciaescouto98@hotmail.com
+PAULO HENRIQUE DE BEM QUADRO,SÃO LEOPOLDO,PAULINHODEBEM749@GMAIL.COM
+PAULO MIGUEL DOS SANTOS BITTENCOURT,Tramandaí,linhoefi@hotmail.com
+Paulo Pedroso Da Silva Junior,Novo Hamburgo 2,pedroso.pjr@gmail.com
+Paulo Roberto do Amaral Neto,SÃO LEOPOLDO,paulo_jpa3@yahoo.com.br
+PEDRO HENRIQUE NUNES RODRIGUES,Passo Fundo 2,pedrohenriquebasques@gmail.com
+Rafaela Avila da Silva,Passo Fundo 3,avilarafaela2006@gmail.com
+Rafaela Dortzbacher Santos,Cachoeirinha,rafaeladortzbacher@gmail.com
+RAFAELA FOSS,Estância Velha,rafaellafoss@gmail.com
+Rafael Correa da Silva da Silva,Pelotas,correadasilvadasilvarafael@gmail.com
+Ramires da Silva Dias,Pelotas 2,sddias39@gmail.com
+Raphael Detoffol Nunes,Poa - Otto,detoffolraphael23@gmail.com
+Rayane Amaral de Souza,Esteio,amaralrayane78@gmail.com
+RENAN DE OLIVEIRA PEREIRA,Pelotas 2,rennan.ft@gmail.com
+RIAN DOS SANTOS DA CRUZ,Estância Velha,rianspike22@gmail.com
+RICARDO DOS SANTOS SILVEIRA,Serafina Correa,ricardosilveira64725@gmail.com
+Roberta Ferreira Teixeira,Rio Grande,robertavendasriogrande@gmail.com
+ROBERTA LAVINIA DUTRA DO AMARAL,Joaçaba,robertalavinia15@gmail.com
+Roberto Azevedo Freire,Gravataí 2,robertoazevedo660@gmail.com
+Roberto da Silva Noll,Passo Fundo 2,robertodasilvanoll@gmail.com
+Rodolfo Carvalho Lima,Novo Hamburgo 2,carvalho579@hotmail.com
+RODRIGO MERCIO VICENTE GARCIA,Bagé,rodrigomerciovg@gmail.com
+Rodrigo Pereira Rodrigues,Pelotas 2,ro.rodrigues0602@gmail.com
+ROMULO SALGADO SIEPIERSKI,Esteio,romulosiepierski@hotmail.com
+Rozelia Ana Zancan,Nova Prata,ROZELIA.ZANCAN@GMAIL.COM
+Rui Rodrigo Gosch,Passo Fundo,rodrigogosch@hotmail.com
+SAMANTHA ARAUJO DE OLIVEIRA,Santa Cruz,samantha20.araujo@gmail.com
+SAMARA LOIOLA DA SILVA,Nova Prata,samloiola@outlook.com
+Sandro Vitorino Bengochea Junior,Poa -Vicente,sandrobengochea@outlook.com
+Santiago Stacy Gonçalves de Freitas,Bagé,stanti07gon@gmail.com
+Schaiane Matias Moraes,Gravataí 2,schaiane301@gmail.com
+Stephane Lessa Fernandes,Pelotas 2,stephanelf4@gmail.com
+Suelen Cristina Fagundes dos Santos Klein,Poa - Restinga,suelen.cfagundes@gmail.com
+Suyane D'avila dos Santos,Taquara,assissuuy@gmail.com
+TAIANE DA SILVA DO AMARAL,Campo Bom,taianeamaral27@gmail.com
+TAINARA GRANDO,Serafina Correa,financeiro@moveca.com.br
+TAIS MARTINS ARROJO,Esteio,taismartinsarrojo@gmail.com
+Tatiana Barboza Lopes,Bagé,tatiblopes10@gmail.com
+Tatiane Neris Lopes,Lajeado,thatynlopes@gmail.com
+TERLYE FONSECA BRANDAO SANTOS,Poa - Otto,terlyefbs@gmail.com
+THAISE CASAGRANDE,Guaporé,thaisecasagrande@gmail.com
+THALINE BARICHELLO,Matriz,thalibarichello@gmail.com
+Thays Silva Nogueira,Bento Gonçalves,thaysynhametal@gmail.com
+Theo Langer Jacobus,Poa -Vicente,langerj@gmail.com
+THIAGO BERNARDES PILGER,Novo Hamburgo,thiago_pilgern15@hotmail.com
+THIAGO DE JESUZ TEJERA,Carlos Barbosa,achadosybaratos@gmail.com
+Thiago Lucio Freitas de Carvalho,Carlos Barbosa,lucio_thl@hotmail.com
+THIAGO PERES DA SILVA FRAGA,Poa - Restinga,thiagoperes888@gmail.com
+Tiago Goi da Silva,Carazinho,sr.tiago.goi@gmail.com
+Tiago Schuster,Tramandaí,tiagoschusterbrigadamilitar@gmail.com
+TONY DE MORAES CORRÊA,Pelotas,tonydemoraescorrea@gmail.com
+Valdomiro Graciolim Viero Neto,Poa - Ipiranga,valdomiro2009@hotmail.com
+VALENTINA ARRIADA BESKOW,Pelotas,michelbeskow3@gmail.com
+Valeria Silveira Saska Freitas,Gravataí 2,freitasvaleriasoska@gmail.com
+VANDERLEI ZOTT,Sapiranga,vandizott@gmail.com
+VANESSA BONIATTI RAMPANELI,Taquara,vanessaboniatti@hotmail.com
+Verônica Fiori Pilot,Nova Prata,vrncfr@gmail.com
+Vinicius Jose Carvalho Bezerra,Poa -Vicente,viniciusjose.c@gmail.com
+VINICIUS UZEDA,Passo Fundo 2,vinifuzeda@gmail.com
+VITOR DIAS DA SILVA,Rio Grande,vitorcolorado2010@gmail.com
+VIVIANE SOUZA,Tramandaí,viviane.souza.vs@gmail.com
+WILLIAM DIAS PINHEIRO,Sapucaia do Sul,wiildiiasp@hotmail.com
+WILLIAN ANTONIO MONTIPO,Bento Gonçalves,wamlili18@gmail.com
+Willian Rafael Ramos de Souza Eufrazio,Gravataí,rafaeleufrazio@gmail.com
+Willian Rosalen,Nova Prata,rosalenwillian04@gmail.com
+Yasmin Gabrieli Cardoso,Novo Hamburgo 2,yasmin678gabrieli@gmail.com
+YGOR MARCOS LEMOS,Poa - Ipiranga,lemos.ygor@gmail.com
+Yohana da Conceição Zancki,Serafina Correa,zanckiyohana886@gmail.com
+Yuri Cavalheiro dos Santos,Pelotas 2,yuricavalheiro13@gmail.com

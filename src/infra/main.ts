@@ -4,7 +4,7 @@ import 'dotenv/config';
 import router from './http/routes';
 import { NotificationWorker } from './workers/notification.worker';
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 const app = express();
 
 // CORS para permitir chamadas do frontend (http://localhost:5173)
@@ -20,7 +20,6 @@ app.use('/api', router);
 const worker = new NotificationWorker();
 worker.start();
 
-app.listen(PORT, () => {
-  console.log(`Servidor de Alertas API rodando na porta ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/api/health`);
+app.listen(process.env.PORT ? parseInt(process.env.PORT,10) : 3001, () => {
+  console.log(`Servidor de Alertas API rodando na porta ${process.env.PORT || 3001}`);
 });
