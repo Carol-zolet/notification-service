@@ -8,6 +8,52 @@ export const router = Router();
 const prisma = new PrismaClient();
 const emailService = process.env.SMTP_HOST ? new NodemailerService() : new MockEmailService();
 
+// Fallback/simple implementation for ReprocessFailedNotificationsUseCase when the real use case isn't available.
+// Replace this with an import of the real implementation when it exists.
+class ReprocessFailedNotificationsUseCase {
+  private prisma: any;
+  private emailService: any;
+
+  constructor(prismaClient: any, emailSvc: any) {
+    this.prisma = prismaClient;
+    this.emailService = emailSvc;
+  }
+
+  async execute(opts: any) {
+    const { limit } = opts || {};
+    // find failed notifications (basic)
+    const items = await this.prisma.notification.findMany({
+      where: { status: "failed" },
+      take: Number(limit) || 100,
+      orderBy: { createdAt: "desc" },
+    });
+
+    const results = await Promise.all(items.map(async (n: any) => {
+      try {
+        // try a basic send; adapt to your emailService API (send or sendWithAttachments)
+        if (typeof this.emailService.send === "function") {
+          await this.emailService.send(n.email, n.subject, n.message);
+        } else if (typeof this.emailService.sendWithAttachments === "function") {
+          await this.emailService.sendWithAttachments(n.email, n.subject, n.message, []);
+        } else {
+          throw new Error("emailService has no send method");
+        }
+
+        await this.prisma.notification.update({
+          where: { id: n.id },
+          data: { status: "sent", sentAt: new Date() },
+        });
+
+        return { id: n.id, ok: true };
+      } catch (e: any) {
+        return { id: n.id, ok: false, error: e?.message || String(e) };
+      }
+    }));
+
+    return { total: items.length, results };
+  }
+}
+
 // Health
 router.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -315,9 +361,10 @@ router.get('/debug/colaboradores-por-unidade', async (req, res) => {
       select: { unidade: true },
     });
     
-    const grouped = {};
+    const grouped: Record<string, number> = {};
     colaboradores.forEach(c => {
-      grouped[c.unidade] = (grouped[c.unidade] || 0) + 1;
+      const key = String(c.unidade ?? '');
+      grouped[key] = (grouped[key] || 0) + 1;
     });
     
     res.json(grouped);
