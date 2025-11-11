@@ -5,7 +5,7 @@
 	"type": "commonjs",
 	"scripts": {
 		"build": "tsc",
-		"start": "node dist/infra/main.js",
+		"start": "node dist/main.js",
 		"dev": "ts-node-dev --respawn --transpile-only src/main.ts",
 		"test": "jest",
 		"seed": "ts-node prisma/seed.ts",
