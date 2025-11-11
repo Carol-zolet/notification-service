@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { config } from '../config';
 import './Dashboard.css';
 
 interface Stats {
@@ -28,10 +29,10 @@ export function Dashboard() {
   const fetchStats = async () => {
     try {
       const [colaboradoresRes, unidadesRes, notificationsRes, failedRes] = await Promise.all([
-        fetch('http://localhost:3001/api/v1/colaboradores').catch(() => ({ json: async () => [] })),
-        fetch('http://localhost:3001/api/v1/admin/unidades').catch(() => ({ json: async () => [] })),
-        fetch('http://localhost:3001/api/v1/notifications').catch(() => ({ json: async () => [] })),
-        fetch('http://localhost:3001/api/v1/notifications/failed?limit=100').catch(() => ({ json: async () => [] })),
+        fetch(`${config.apiBaseUrl}/api/v1/colaboradores`).catch(() => ({ json: async () => [] })),
+        fetch(`${config.apiBaseUrl}/api/v1/admin/unidades`).catch(() => ({ json: async () => [] })),
+        fetch(`${config.apiBaseUrl}/api/v1/notifications`).catch(() => ({ json: async () => [] })),
+        fetch(`${config.apiBaseUrl}/api/v1/notifications/failed?limit=100`).catch(() => ({ json: async () => [] })),
       ]);
 
       const colaboradores = await colaboradoresRes.json();
@@ -59,7 +60,7 @@ export function Dashboard() {
 
   const fetchRecentHistory = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/v1/payslips/history?page=1&limit=5');
+      const res = await fetch(`${config.apiBaseUrl}/api/v1/payslips/history?page=1&limit=5`);
       const data = await res.json();
       setRecentHistory(Array.isArray(data.history) ? data.history : []);
     } catch (error) {

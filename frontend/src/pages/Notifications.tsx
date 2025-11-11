@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { config } from '../config';
 import './Notifications.css';
 
 interface Notification {
@@ -37,7 +38,7 @@ export function Notifications() {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:3001/api/v1/notifications');
+      const res = await fetch(`${config.apiBaseUrl}/api/v1/notifications`);
       const data = await res.json();
       setNotifications(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -50,7 +51,7 @@ export function Notifications() {
   const fetchFailedNotifications = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:3001/api/v1/notifications/failed?limit=100');
+      const res = await fetch(`${config.apiBaseUrl}/api/v1/notifications/failed?limit=100`);
       const data = await res.json();
       setFailedNotifications(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -69,7 +70,7 @@ export function Notifications() {
 
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:3001/api/v1/notifications', {
+      const res = await fetch(`${config.apiBaseUrl}/api/v1/notifications`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -94,7 +95,7 @@ export function Notifications() {
 
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:3001/api/v1/notifications/reprocess', {
+      const res = await fetch(`${config.apiBaseUrl}/api/v1/notifications/reprocess`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ limit: 100 }),

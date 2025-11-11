@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react';
+import { config } from '../config';
 
-const API_BASE = 'http://localhost:3001/api/v1';
+const API_BASE = `${config.apiBaseUrl}/api/v1`;
 
 export function SendPayslipForm() {
   const [unidades, setUnidades] = useState<string[]>([]);

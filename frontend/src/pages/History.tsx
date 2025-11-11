@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { config } from '../config';
 import './History.css';
 
 interface HistoryItem {
@@ -29,7 +30,7 @@ export function History() {
 
   const fetchUnidades = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/v1/unidades');
+      const res = await fetch(`${config.apiBaseUrl}/api/v1/unidades`);
       const data = await res.json();
       setUnidades(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -40,7 +41,7 @@ export function History() {
   const fetchHistory = async () => {
     try {
       setLoading(true);
-      const url = `http://localhost:3001/api/v1/payslips/history?page=${currentPage}&limit=10${filterUnidade ? `&unidade=${encodeURIComponent(filterUnidade)}` : ''}`;
+      const url = `${config.apiBaseUrl}/api/v1/payslips/history?page=${currentPage}&limit=10${filterUnidade ? `&unidade=${encodeURIComponent(filterUnidade)}` : ''}`;
       const res = await fetch(url);
       const data = await res.json();
 
