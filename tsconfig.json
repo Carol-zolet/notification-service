@@ -2,6 +2,8 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "CommonJS",
+    "lib": ["ES2022"],
+    "types": ["node", "jest"],
     "rootDir": "./src",
     "outDir": "./dist",
     "esModuleInterop": true,
@@ -9,7 +11,8 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    "moduleResolution": "node"
   },
   "include": ["src"],
   "exclude": ["src/scripts"]
