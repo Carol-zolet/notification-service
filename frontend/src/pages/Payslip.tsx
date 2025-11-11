@@ -136,8 +136,11 @@ export function Payslip() {
   };
 
   return (
-    <div className="payslip-container">
-      <h1>Enviar Holerites</h1>
+    <div className="payslip-page">
+      <header className="page-header">
+        <h1 className="page-title">Enviar Holerites</h1>
+        <p className="page-subtitle">Distribua holerites em lote para colaboradores de uma unidade</p>
+      </header>
 
       {response && (
         <div className={`response response-${response.type}`}>
@@ -145,6 +148,7 @@ export function Payslip() {
         </div>
       )}
 
+      <div className="payslip-form">
       <div className="form-section">
         <label>Unidade:</label>
         <select
@@ -259,8 +263,9 @@ export function Payslip() {
         onClick={handleEnviar}
         disabled={loading || !file || !unidade}
       >
-        {loading ? 'Enviando...' : 'Enviar'}
+        {loading ? '⏳ Enviando...' : '📤 Enviar Holerites'}
       </button>
+      </div>
     </div>
   );
 }
