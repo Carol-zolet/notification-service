@@ -5,11 +5,10 @@ services:
     plan: free
     buildCommand: npm install && npx prisma generate && npm run build
     startCommand: npm run start
+    preDeployCommand: npx prisma migrate deploy
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 3001
       - key: DATABASE_URL
         value: postgresql://notification_service_oesq_user:dgTRPSr1tpEzDB8kmYcnfssXOrqh70bU@dpg-d494k1v5r7bs738uspq0-a.oregon-postgres.render.com/notification_service_oesq
     autoDeploy: true
