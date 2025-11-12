@@ -3,7 +3,7 @@ services:
     name: notification-service
     env: node
     plan: free
-    buildCommand: bash scripts/build-render.sh
+    buildCommand: npm install && npx prisma generate && (npx prisma migrate resolve --applied 20251112013014_init || true) && npx prisma migrate deploy && npm run build
     startCommand: npm run start
     envVars:
       - key: NODE_ENV
