@@ -8,6 +8,4 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_wxEz65lQJPHB@ep-crimson-dream-afiy58gf-pooler.c-2.us-west-2.aws.neon.tech/neondb?sslmode=require
     autoDeploy: true
