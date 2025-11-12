@@ -3,9 +3,13 @@ import cors from 'cors';
 import 'dotenv/config';
 import router from './http/routes';
 import { NotificationWorker } from './workers/notification.worker';
+import { PrismaClient } from '@prisma/client';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 const app = express();
+
+// Prisma client usado para healthcheck e possíveis checagens em runtime
+const prisma = new PrismaClient();
 
 // CORS para permitir chamadas do frontend
 const allowedOrigins = [
@@ -31,9 +35,30 @@ app.use(cors({
 app.use(express.json());
 app.use('/api', router);
 
+// Health endpoint simples (útil para monitoramento / debug)
+app.get('/health', async (req, res) => {
+  try {
+    // tenta uma verificação simples no banco — não é intensiva
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ok', database: 'connected' });
+  } catch (err: any) {
+    // log leve para ajudar debugging em production
+    console.error('Health check DB failed:', err?.message || err);
+    res.status(500).json({ status: 'error', database: 'unreachable', error: String(err?.message || err) });
+  }
+});
+
 const worker = new NotificationWorker();
 worker.start();
 
 app.listen(process.env.PORT ? parseInt(process.env.PORT,10) : 3001, () => {
   console.log(`Servidor de Alertas API rodando na porta ${process.env.PORT || 3001}`);
+  // Logs de startup úteis para depuração de CORS em produção (não expõem segredos)
+  try {
+    console.log('Allowed origins:', allowedOrigins);
+    console.log('FRONTEND_URL presente:', !!process.env.FRONTEND_URL, 'valor:', process.env.FRONTEND_URL || '(não definido)');
+  } catch (err) {
+    // segurança: qualquer erro de logging não deve impedir o servidor
+    console.warn('Erro ao logar configuração de CORS:', err);
+  }
 });

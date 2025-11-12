@@ -243,3 +243,55 @@ Este é um projeto acadêmico desenvolvido para a disciplina de Desenvolvimento 
 ##  Licença
 
 MIT
+
+##  Deploy (Vercel frontend + Render backend)
+
+Estas instruções têm como objetivo facilitar o deploy em produção usando Vercel para o frontend (Vite) e Render para o backend (Node + Prisma). Ajuste as URLs conforme seus serviços.
+
+1) Backend (Render)
+
+- No painel do serviço do backend em Render, adicione as seguintes Environment Variables:
+   - `DATABASE_URL` = postgresql://... (string de conexão do seu banco Postgres)
+   - `FRONTEND_URL` = https://notification-service-a239ihe9r-carolines-projects-4e5c6800.vercel.app
+   - `NODE_ENV` = production
+
+- Confirme que o build e start command do serviço apontam para iniciar o servidor (ex.: `npm run start` ou `node dist/main.js`).
+- Se usar Prisma em produção, configure o deploy command para executar migrations (ou execute manualmente):
+
+```powershell
+# gerar client
+npx prisma generate
+# aplicar migrations em produção (apenas se tiver migrations geradas)
+npx prisma migrate deploy
+```
+
+2) Frontend (Vercel)
+
+- No painel do projeto frontend em Vercel → Settings → Environment Variables, adicione:
+   - Key: `VITE_API_BASE_URL`
+   - Value: `https://notification-service-rmnv.onrender.com`
+   - Environment: Production (e Preview se precisar)
+
+- Após adicionar, acione um redeploy (o Vite injeta variáveis `VITE_` em tempo de build).
+
+3) Testes pós-deploy
+
+```powershell
+# verificar health do backend
+Invoke-RestMethod -Uri 'https://notification-service-rmnv.onrender.com/health' -Method GET | ConvertTo-Json -Depth 5
+
+# verificar endpoint de notifications
+Invoke-RestMethod -Uri 'https://notification-service-rmnv.onrender.com/api/v1/notifications' -Method GET | ConvertTo-Json -Depth 5
+
+# checar headers (CORS)
+curl -I https://notification-service-rmnv.onrender.com/api/v1/notifications
+```
+
+Procure `Access-Control-Allow-Origin` nos headers para confirmar que a origem do frontend foi permitida.
+
+4) Dicas de debugging
+
+- Se receber `Not allowed by CORS` no console do navegador, verifique que `FRONTEND_URL` no Render corresponde exatamente ao domínio do Vercel (incluindo `https://`).
+- Verifique os logs do serviço no Render para erros do Prisma (ex.: falha ao conectar ao banco) ou erros de startup.
+- Use o endpoint `/health` para checar se o backend consegue se conectar ao banco.
+
