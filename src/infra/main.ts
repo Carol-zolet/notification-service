@@ -18,19 +18,38 @@ const allowedOrigins = [
   process.env.FRONTEND_URL, // URL do frontend na Vercel
 ].filter(Boolean);
 
+// CORS config: usamos um handler explícito para origin que registra o origin
+// e autoriza temporariamente durante o diagnóstico. IMPORTANTE: reverter
+// para política restritiva após resolver a causa do 500.
 app.use(cors({
   origin: (origin, callback) => {
-    // Permite requisições sem origin (como Postman, curl, etc) OU das origens permitidas
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    try {
+      // origin pode ser undefined (requests do servidor / curl). Log apenas para debug.
+      console.log('[CORS DEBUG] origin header:', origin || '(nenhum)');
+      // Temporariamente permitir a origem — evita que erros na verificação de
+      // origem causem 500s. Depois podemos restringir a uma allowlist.
+      return callback(null, true);
+    } catch (err) {
+      console.error('[CORS DEBUG] falha no origin handler:', err);
+      // Não recusar a requisição de forma agressiva — retorna sem CORS em caso de erro
+      return callback(null, false);
     }
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
 }));
+
+// Request logger (leve) para ajudar a diagnosticar 500s ativados por headers
+app.use((req: any, _res: any, next: any) => {
+  try {
+    const origin = req.headers?.origin || '(nenhum)';
+    const ct = req.headers?.['content-type'] || '(sem content-type)';
+    console.log(`[REQ] ${req.method} ${req.url} - Origin: ${origin} - Content-Type: ${ct}`);
+  } catch (err) {
+    console.warn('[REQ] falha ao logar request:', err);
+  }
+  next();
+});
 
 app.use(express.json());
 // Expor as rotas em /api/v1 (versionamento centralizado no mount). Mantemos o
@@ -56,6 +75,30 @@ app.get('/api/health', healthHandler);
 
 const worker = new NotificationWorker();
 worker.start();
+
+// Global error handler: log e retorna JSON em vez de page HTML genérica.
+// Isso facilita inspecionar a mensagem no cliente e nos logs do Render.
+app.use((err: any, _req: any, res: any, next: any) => {
+  try {
+    console.error('Unhandled error:', err && err.stack ? err.stack : err);
+  } catch (logErr) {
+    console.error('Erro ao logar erro global:', logErr);
+  }
+
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  res.status(500).json({ error: 'Internal Server Error', message: err?.message || String(err) });
+});
+
+// Process-level handlers para capturar promessas rejeitadas e exceções não tratadas
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection at:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err && err.stack ? err.stack : err);
+});
 
 app.listen(process.env.PORT ? parseInt(process.env.PORT,10) : 3001, () => {
   console.log(`Servidor de Alertas API rodando na porta ${process.env.PORT || 3001}`);
