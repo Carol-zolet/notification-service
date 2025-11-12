@@ -33,8 +33,8 @@ app.use(cors({
 }));
 
 app.use(express.json());
-// Expor as rotas tanto em /api quanto em /api/v1 para facilitar migração/compatibilidade
-app.use('/api', router);
+// Expor as rotas em /api/v1 (versionamento centralizado no mount). Mantemos o
+// alias /api/health para compatibilidade com checks antigos.
 app.use('/api/v1', router);
 
 // Health endpoint simples (útil para monitoramento / debug)
