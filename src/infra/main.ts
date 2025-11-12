@@ -36,7 +36,7 @@ app.use(express.json());
 app.use('/api', router);
 
 // Health endpoint simples (útil para monitoramento / debug)
-app.get('/health', async (req, res) => {
+const healthHandler = async (req: any, res: any) => {
   try {
     // tenta uma verificação simples no banco — não é intensiva
     await prisma.$queryRaw`SELECT 1`;
@@ -46,7 +46,11 @@ app.get('/health', async (req, res) => {
     console.error('Health check DB failed:', err?.message || err);
     res.status(500).json({ status: 'error', database: 'unreachable', error: String(err?.message || err) });
   }
-});
+};
+
+app.get('/health', healthHandler);
+// Alias para clientes que esperam o health sob /api/health
+app.get('/api/health', healthHandler);
 
 const worker = new NotificationWorker();
 worker.start();
