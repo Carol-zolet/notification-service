@@ -20,9 +20,10 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       <aside className="sidebar">
         <div className="sidebar-header">
           <h1 className="sidebar-title">
-            <span className="sidebar-icon">📨</span>
-            Notification Service
+            <span className="sidebar-icon">🏋️</span>
+            RH da 26fit
           </h1>
+          <p className="sidebar-subtitle">Sistema de Gestão</p>
         </div>
         <nav className="sidebar-nav">
           {menuItems.map((item) => (
