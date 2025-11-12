@@ -35,9 +35,9 @@
           "raw": "{\n  \"email\": \"usuario@exemplo.com\",\n  \"subject\": \"Notificação Imediata\",\n  \"message\": \"Esta notificação será processada no próximo ciclo do worker (até 60s)\",\n  \"scheduledFor\": \"{{current_time}}\"\n}"
         },
         "url": {
-          "raw": "{{base_url}}/api/notifications/schedule",
+          "raw": "{{base_url}}/api/v1/notifications/schedule",
           "host": ["{{base_url}}"],
-          "path": ["api", "notifications", "schedule"]
+          "path": ["api", "v1", "notifications", "schedule"]
         },
         "description": "Agenda uma notificação para ser enviada imediatamente"
       },
@@ -58,9 +58,9 @@
           "raw": "{\n  \"email\": \"teste@exemplo.com\",\n  \"subject\": \"Notificação Futura\",\n  \"message\": \"Esta notificação será enviada em 5 minutos\",\n  \"scheduledFor\": \"2025-11-04T10:00:00Z\"\n}"
         },
         "url": {
-          "raw": "{{base_url}}/api/notifications/schedule",
+          "raw": "{{base_url}}/api/v1/notifications/schedule",
           "host": ["{{base_url}}"],
-          "path": ["api", "notifications", "schedule"]
+          "path": ["api", "v1", "notifications", "schedule"]
         },
         "description": "Agenda uma notificação para envio futuro"
       },

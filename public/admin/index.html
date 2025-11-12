@@ -78,7 +78,11 @@
   </div>
 
   <script>
-    const API_URL = '/api/v1';
+  // Em ambiente de desenvolvimento estático (ex.: python -m http.server)
+  // o servidor não faz proxy para o backend, então apontamos a URL
+  // absoluta para o backend em Render para testes locais.
+  // Em produção com Vercel, use a variável de build VITE_API_BASE_URL.
+  const API_URL = 'https://notification-service-rmnv.onrender.com/api/v1';
     
     function showMessage(text, type) {
       const msg = document.getElementById('message');
