@@ -51,8 +51,23 @@
 <body>
   <header class="header">
     <div style="display:flex;align-items:center;gap:1rem;">
-      <div style="font-weight:800;color:var(--accent);font-size:1.25rem">26fit</div>
-      <div style="font-size:1rem;color:var(--text-light)">RH da 26fit — Sistema de Gestão</div>
+      <!-- inline SVG logo + text -->
+      <div style="display:flex;align-items:center;gap:0.75rem;">
+        <svg width="40" height="40" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="g1" x1="0%" x2="100%" y1="0%" y2="100%">
+              <stop offset="0%" stop-color="#1abc9c" />
+              <stop offset="100%" stop-color="#6a11cb" />
+            </linearGradient>
+          </defs>
+          <rect rx="18" ry="18" width="100" height="100" fill="url(#g1)" />
+          <text x="50%" y="55%" font-family="Arial, Helvetica, sans-serif" font-size="46" fill="#fff" text-anchor="middle" alignment-baseline="middle" font-weight="700">26</text>
+        </svg>
+        <div style="display:flex;flex-direction:column;">
+          <div style="font-weight:800;color:var(--text);font-size:1.25rem">26fit</div>
+          <div style="font-size:0.9rem;color:var(--text-light)">RH da 26fit — Sistema de Gestão</div>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -66,6 +81,7 @@
           <button class="btn-primary btn-small" onclick="showTab('dashboard')" style="text-align:left">📊 Dashboard</button>
           <button class="btn-warning btn-small" onclick="showTab('send')" style="text-align:left">📄 Enviar Holerites</button>
           <button class="btn-primary btn-small" onclick="showTab('notifications')" style="text-align:left">🔔 Notificações</button>
+          <button class="btn-small" onclick="showTab('equipe')" style="text-align:left">👥 Equipe</button>
           <button class="btn-small" onclick="showTab('history')" style="text-align:left">📋 Histórico</button>
         </nav>
 
@@ -99,23 +115,26 @@
         <hr>
 
         <div id="history" style="display:none">
-        <form id="colaboradorForm">
-          <h3> Novo Colaborador</h3>
-          <div class="form-group">
-            <label for="colabNome">Nome:</label>
-            <input type="text" id="colabNome" placeholder="Ex: João Silva" required />
-          </div>
-          <div class="form-group">
-            <label for="colabEmail">Email:</label>
-            <input type="email" id="colabEmail" placeholder="joao@empresa.com" required />
-          </div>
-          <div class="form-group">
-            <label for="colabUnidade">Unidade:</label>
-            <input type="text" id="colabUnidade" placeholder="Ex: Matriz Porto Alegre" required />
-          </div>
-          <button type="submit" class="btn-primary" style="width:100%">Salvar Colaborador</button>
-        </form>
-        </form>
+        <!-- history only shows table; colaborador form moved to Equipe -->
+        </div>
+        
+        <div id="equipe" style="display:none">
+          <form id="colaboradorForm">
+            <h3> Novo Colaborador</h3>
+            <div class="form-group">
+              <label for="colabNome">Nome:</label>
+              <input type="text" id="colabNome" placeholder="Ex: João Silva" required />
+            </div>
+            <div class="form-group">
+              <label for="colabEmail">Email:</label>
+              <input type="email" id="colabEmail" placeholder="joao@empresa.com" required />
+            </div>
+            <div class="form-group">
+              <label for="colabUnidade">Unidade:</label>
+              <input type="text" id="colabUnidade" placeholder="Ex: Matriz Porto Alegre" required />
+            </div>
+            <button type="submit" class="btn-primary" style="width:100%">Salvar Colaborador</button>
+          </form>
         </div>
       </div>
     </aside>
@@ -206,7 +225,7 @@
 
     function showTab(name) {
       // hide left-area tabs
-      ['send','notifications','history'].forEach(id => {
+      ['send','notifications','history','equipe'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = (id === name) ? 'block' : 'none';
       });
@@ -215,7 +234,7 @@
         const el = document.getElementById(id);
         if (el) el.style.display = (id === ('tab-' + name) || (name === 'dashboard' && id === 'tab-dashboard')) ? 'block' : 'none';
       });
-      const titleMap = { dashboard: 'Dashboard', send: 'Enviar Holerites', notifications: 'Notificações', history: 'Histórico' };
+      const titleMap = { dashboard: 'Dashboard', send: 'Enviar Holerites', notifications: 'Notificações', history: 'Histórico', equipe: 'Equipe' };
       document.getElementById('panelTitle').textContent = titleMap[name] || 'Dashboard';
     }
 
