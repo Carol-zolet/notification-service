@@ -79,6 +79,6 @@ Write-Host ""
 Write-Host "Servidor vai reiniciar..." -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Teste estes endpoints:" -ForegroundColor Cyan
-Write-Host "  - http://localhost:3001/api/debug/total" -ForegroundColor Yellow
-Write-Host "  - http://localhost:3001/api/debug/unidades" -ForegroundColor Yellow
-Write-Host "  - http://localhost:3001/api/debug/colaboradores-por-unidade" -ForegroundColor Yellow
+Write-Host "  - http://localhost:3001/api/v1/debug/total" -ForegroundColor Yellow
+Write-Host "  - http://localhost:3001/api/v1/debug/unidades" -ForegroundColor Yellow
+Write-Host "  - http://localhost:3001/api/v1/debug/colaboradores-por-unidade" -ForegroundColor Yellow

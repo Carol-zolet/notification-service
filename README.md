@@ -81,7 +81,7 @@ GET /api/health
 ### Agendar Notificação
 
 \\\http
-POST /api/notifications/schedule
+POST /api/v1/notifications/schedule
 Content-Type: application/json
 
 {
@@ -274,11 +274,12 @@ npx prisma migrate deploy
 
 - Após adicionar, acione um redeploy (o Vite injeta variáveis `VITE_` em tempo de build).
 
+
 3) Testes pós-deploy
 
 ```powershell
 # verificar health do backend
-Invoke-RestMethod -Uri 'https://notification-service-rmnv.onrender.com/health' -Method GET | ConvertTo-Json -Depth 5
+Invoke-RestMethod -Uri 'https://notification-service-rmnv.onrender.com/api/health' -Method GET | ConvertTo-Json -Depth 5
 
 # verificar endpoint de notifications
 Invoke-RestMethod -Uri 'https://notification-service-rmnv.onrender.com/api/v1/notifications' -Method GET | ConvertTo-Json -Depth 5
