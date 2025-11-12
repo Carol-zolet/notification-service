@@ -142,7 +142,11 @@
   </div>
 
   <script>
-    const API_URL = '/api/v1';
+  // Em ambiente de desenvolvimento estático (ex.: python -m http.server)
+  // o servidor não faz proxy para o backend, então apontamos a URL
+  // absoluta para o backend em Render para testes locais.
+  // Em produção com Vercel, use a variável de build VITE_API_BASE_URL.
+  const API_URL = 'https://notification-service-rmnv.onrender.com/api/v1';
     const api = {
       get: (endpoint) => fetch(API_URL + endpoint).then(res => res.json()),
       post: (endpoint, body) => fetch(API_URL + endpoint, {
@@ -198,18 +202,18 @@
         }
         colaboradores.forEach(colab => {
           const row = tbody.insertRow();
-          row.innerHTML = \
-            <td>\</td>
-            <td>\</td>
-            <td>\</td>
+          row.innerHTML = `
+            <td>${colab.nome || ''}</td>
+            <td>${colab.email || ''}</td>
+            <td>${colab.unidade || ''}</td>
             <td class="actions">
-              <button class="btn-warning btn-small" onclick="openEditModal('\')">Editar</button>
-              <button class="btn-danger btn-small" onclick="deleteColaborador('\')">Excluir</button>
+              <button class="btn-warning btn-small" onclick="openEditModal('${colab.id}')">Editar</button>
+              <button class="btn-danger btn-small" onclick="deleteColaborador('${colab.id}')">Excluir</button>
             </td>
-          \;
+          `;
         });
       } catch (err) {
-        showStatus('Erro ao carregar colaboradores: ' + err.message, 'error');
+        showStatus('Erro ao carregar colaboradores: ' + (err && err.message ? err.message : err), 'error');
       }
     }
 
@@ -234,14 +238,13 @@
 
     window.deleteColaborador = async (id) => {
       if (!confirm(' Tem certeza que deseja excluir este colaborador?')) return;
-      
       try {
-        await api.delete(\/colaboradores/\\);
-        showStatus(' Colaborador exclu?do com sucesso!', 'success');
+        await api.delete(`/colaboradores/${id}`);
+        showStatus(' Colaborador excluído com sucesso!', 'success');
         await carregarColaboradores();
         await carregarUnidades();
       } catch (err) {
-        showStatus(' Erro ao excluir: ' + err.message, 'error');
+        showStatus(' Erro ao excluir: ' + (err && err.message ? err.message : err), 'error');
       }
     };
     
@@ -249,14 +252,14 @@
     
     window.openEditModal = async (id) => {
       try {
-        const colab = await api.get(\/colaboradores/\\);
+        const colab = await api.get(`/colaboradores/${id}`);
         document.getElementById('editColabId').value = colab.id;
         document.getElementById('editColabNome').value = colab.nome;
         document.getElementById('editColabEmail').value = colab.email;
         document.getElementById('editColabUnidade').value = colab.unidade;
         modal.style.display = 'block';
       } catch (err) {
-        showStatus('? Erro ao carregar dados.', 'error');
+        showStatus('Erro ao carregar dados.', 'error');
       }
     };
     
@@ -274,15 +277,14 @@
         email: document.getElementById('editColabEmail').value.trim(),
         unidade: document.getElementById('editColabUnidade').value.trim(),
       };
-      
       try {
-        await api.put(\/colaboradores/\\, data);
+        await api.put(`/colaboradores/${id}`, data);
         showStatus(' Colaborador alterado com sucesso!', 'success');
         closeModal();
         await carregarColaboradores();
         await carregarUnidades();
       } catch (err) {
-        showStatus(' Erro ao alterar: ' + err.message, 'error');
+        showStatus(' Erro ao alterar: ' + (err && err.message ? err.message : err), 'error');
       }
     });
     
@@ -295,8 +297,8 @@
       
       try {
         const data = await api.postForm('/payslips/process', formData);
-        if (data.error) throw new Error(data.error);
-        showStatus(\? Sucesso! \ enviados para \\, 'success');
+          if (data.error) throw new Error(data.error);
+          showStatus('Sucesso! Arquivo enviado.', 'success');
         e.target.reset();
       } catch (err) {
         showStatus(' Erro ao processar: ' + err.message, 'error');
