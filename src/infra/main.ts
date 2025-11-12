@@ -33,7 +33,9 @@ app.use(cors({
 }));
 
 app.use(express.json());
+// Expor as rotas tanto em /api quanto em /api/v1 para facilitar migração/compatibilidade
 app.use('/api', router);
+app.use('/api/v1', router);
 
 // Health endpoint simples (útil para monitoramento / debug)
 const healthHandler = async (req: any, res: any) => {
