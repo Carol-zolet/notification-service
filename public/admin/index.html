@@ -92,7 +92,9 @@
 
     async function loadFiliais() {
       try {
-        const res = await fetch(`${API_URL}/filiais`);
+        // API atual usa /admin/unidades para administração
+        const res = await fetch(`${API_URL}/admin/unidades`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const filiais = await res.json();
         
         const select = document.getElementById('filterFilial');
@@ -125,12 +127,14 @@
           const filiais = await resFiliais.json();
           
           for (const f of filiais) {
-            const res = await fetch(`${API_URL}/colaboradores?filial=${encodeURIComponent(f)}`);
+            const res = await fetch(`${API_URL}/admin/colaboradores?unidade=${encodeURIComponent(f)}`);
+            if (!res.ok) continue;
             const colabs = await res.json();
             colaboradores = [...colaboradores, ...colabs];
           }
         } else {
-          const res = await fetch(`${API_URL}/colaboradores?filial=${encodeURIComponent(filial)}`);
+          const res = await fetch(`${API_URL}/admin/colaboradores?unidade=${encodeURIComponent(filial)}`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
           colaboradores = await res.json();
         }
 
