@@ -111,3 +111,13 @@ app.listen(process.env.PORT ? parseInt(process.env.PORT,10) : 3001, () => {
     console.warn('Erro ao logar configuração de CORS:', err);
   }
 });
+
+// DEBUG TEMP: permitir qualquer origin (remover assim que diagnosticar)
+app.use((req, res, next) => {
+  console.log('DEBUG Origin header:', req.headers.origin);
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
