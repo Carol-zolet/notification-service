@@ -60,7 +60,7 @@ router.get("/health", (_req, res) => {
 });
 
 // Unidades
-router.get("/v1/unidades", async (_req, res) => {
+router.get("/unidades", async (_req, res) => {
   const unidades = await prisma.colaborador.findMany({
     distinct: ["unidade"],
     select: { unidade: true },
@@ -70,7 +70,7 @@ router.get("/v1/unidades", async (_req, res) => {
 });
 
 // Colaboradores
-router.get("/v1/colaboradores", async (_req, res) => {
+router.get("/colaboradores", async (_req, res) => {
   const colabs = await prisma.colaborador.findMany({
     select: { id: true, nome: true, email: true, unidade: true, createdAt: true },
     orderBy: { unidade: "asc" },
@@ -79,7 +79,7 @@ router.get("/v1/colaboradores", async (_req, res) => {
 });
 
 // Notificações (simples criar/listar)
-router.post("/v1/notifications", async (req, res) => {
+router.post("/notifications", async (req, res) => {
   try {
     const { email, subject, message, scheduledAt, unidade } = req.body;
     if (!email) return res.status(400).json({ error: "Campo 'email' obrigatório" });
@@ -98,7 +98,7 @@ router.post("/v1/notifications", async (req, res) => {
   }
 });
 
-router.get("/v1/notifications", async (_req, res) => {
+router.get("/notifications", async (_req, res) => {
   const items = await prisma.notification.findMany({
     orderBy: { createdAt: "desc" },
     take: 200,
@@ -107,7 +107,7 @@ router.get("/v1/notifications", async (_req, res) => {
 });
 
 // Falhas
-router.get("/v1/notifications/failed", async (req, res) => {
+router.get("/notifications/failed", async (req, res) => {
   try {
     const { unidade, limit = "100" } = req.query as Record<string, string>;
     const where: any = { status: "failed" };
@@ -134,7 +134,7 @@ router.get("/v1/notifications/failed", async (req, res) => {
   }
 });
 
-router.post("/v1/notifications/reprocess", async (req, res) => {
+router.post("/notifications/reprocess", async (req, res) => {
   try {
     const {
       limit,
@@ -191,7 +191,7 @@ function renderTemplate(tpl: string, ctx: { nome: string; unidade: string }) {
     .replace(/{{\s*unidade\s*}}/gi, ctx.unidade ?? "");
 }
 
-router.post("/v1/payslips/process", upload.single("pdfFile"), async (req, res) => {
+router.post("/payslips/process", upload.single("pdfFile"), async (req, res) => {
   try {
     const {
       unidade,
@@ -303,7 +303,7 @@ router.post("/v1/payslips/process", upload.single("pdfFile"), async (req, res) =
 });
 
 // Histórico de holerites
-router.get("/v1/payslips/history", async (req, res) => {
+router.get("/payslips/history", async (req, res) => {
   const { unidade, page = "1", limit = "20" } = req.query as Record<string, string>;
   const take = Math.min(Number(limit) || 20, 100);
   const skip = (Number(page) - 1) * take;
