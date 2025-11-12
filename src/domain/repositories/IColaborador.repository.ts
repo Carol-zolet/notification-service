@@ -1,4 +1,4 @@
-﻿import { Colaborador } from '../entities/colaborador.entity';
+import { Colaborador } from '../entities/colaborador.entity';
 
 export type ColaboradorDTO = Omit<Colaborador, 'id' | 'createdAt'>;
 

@@ -1,4 +1,4 @@
-﻿export interface EmailAttachment {
+export interface EmailAttachment {
   filename: string;
   content: Buffer | string;
   encoding?: string;

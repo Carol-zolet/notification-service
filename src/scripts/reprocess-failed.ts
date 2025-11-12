@@ -1,4 +1,4 @@
-﻿import "dotenv/config";
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { NodemailerService } from "../infra/services/nodemailer.service";
 import { MockEmailService } from "../infra/services/mock-email.service";

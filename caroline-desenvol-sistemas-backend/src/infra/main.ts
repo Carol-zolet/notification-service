@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import routes from './http/routes';
 import './workers/notification.worker';
 

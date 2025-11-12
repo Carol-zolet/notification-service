@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { config } from '../config';
 
 const API_BASE = `${config.apiBaseUrl}/api/v1`;

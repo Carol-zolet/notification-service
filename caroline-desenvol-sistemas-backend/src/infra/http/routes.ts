@@ -1,4 +1,4 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import { NotificationController } from './controllers/notification.controller';
 import { ScheduleNotificationUseCase } from '../../application/use-cases/schedule-notification.use-case';
 import { InMemoryNotificationRepository } from '../database/repositories/in-memory-notification.repository';

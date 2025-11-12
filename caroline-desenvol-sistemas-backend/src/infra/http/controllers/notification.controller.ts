@@ -1,4 +1,4 @@
-﻿import { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { ScheduleNotificationUseCase } from '../../../application/use-cases/schedule-notification.use-case';
 
 export class NotificationController {

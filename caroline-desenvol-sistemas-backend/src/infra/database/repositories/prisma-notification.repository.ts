@@ -1,4 +1,4 @@
-﻿import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { Notification as NotificationEntity } from '../../../domain/entities/notification.entity';
 import { NotificationRepository } from '../../../domain/repositories/INotification.repository';
 

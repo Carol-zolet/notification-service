@@ -1,4 +1,4 @@
-﻿import { NotificationRepository } from '../../domain/repositories/INotification.repository';
+import { NotificationRepository } from '../../domain/repositories/INotification.repository';
 import { Notification } from '../../domain/entities/notification.entity';
 import { ScheduleNotificationDTO } from '../dtos/schedule-notification.dto';
 import { randomUUID } from 'crypto';

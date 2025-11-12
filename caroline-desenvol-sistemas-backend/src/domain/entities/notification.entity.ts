@@ -1,4 +1,4 @@
-﻿export interface Notification {
+export interface Notification {
   id: string;
   email: string;
   subject: string;

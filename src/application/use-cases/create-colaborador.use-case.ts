@@ -1,4 +1,4 @@
-﻿import { Colaborador } from '../../domain/entities/colaborador.entity';
+import { Colaborador } from '../../domain/entities/colaborador.entity';
 import { ColaboradorRepository, ColaboradorDTO } from '../../domain/repositories/IColaborador.repository';
 
 export class CreateColaboradorUseCase {

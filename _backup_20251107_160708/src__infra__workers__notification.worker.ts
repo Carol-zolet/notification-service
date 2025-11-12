@@ -1,4 +1,4 @@
-﻿import 'dotenv/config';
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { SendDueNotificationsUseCase } from '../../application/use-cases/send-due-notifications.use-case';
 import { NodemailerService } from '../services/nodemailer.service';
