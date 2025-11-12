@@ -6,8 +6,8 @@
   <title>Painel de Alertas e RH</title>
   <style>
     :root {
-      --primary: #007bff; --danger: #dc3545; --success: #28a745; --warning: #ffc107;
-      --bg-light: #f8f9fa; --border: #dee2e6; --text: #212529; --text-light: #6c757d;
+      --primary: #0d6efd; --accent: #1abc9c; --accent-2: #6a11cb; --danger: #dc3545; --success: #28a745; --warning: #ffc107;
+      --bg-light: #f7fbfc; --border: #e6eef6; --text: #0f1724; --text-light: #6c757d;
     }
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background-color: var(--bg-light); color: var(--text); }
@@ -50,16 +50,29 @@
 </head>
 <body>
   <header class="header">
-    <h1> Painel de RH - Sistema de Alertas</h1>
+    <div style="display:flex;align-items:center;gap:1rem;">
+      <div style="font-weight:800;color:var(--accent);font-size:1.25rem">26fit</div>
+      <div style="font-size:1rem;color:var(--text-light)">RH da 26fit — Sistema de Gestão</div>
+    </div>
   </header>
 
   <main class="main-container">
     <aside class="panel panel-left">
       <div class="panel-header">
-        <h2> A??es</h2>
+        <h2> Menu</h2>
       </div>
       <div class="panel-body">
-        <form id="payslipForm">
+        <nav style="display:flex;flex-direction:column;gap:0.5rem">
+          <button class="btn-primary btn-small" onclick="showTab('dashboard')" style="text-align:left">📊 Dashboard</button>
+          <button class="btn-warning btn-small" onclick="showTab('send')" style="text-align:left">📄 Enviar Holerites</button>
+          <button class="btn-primary btn-small" onclick="showTab('notifications')" style="text-align:left">🔔 Notificações</button>
+          <button class="btn-small" onclick="showTab('history')" style="text-align:left">📋 Histórico</button>
+        </nav>
+
+        <hr />
+
+        <div id="send" style="display:none">
+          <form id="payslipForm">
           <h3> Processar Holerites</h3>
           <div class="form-group">
             <label for="unidadeSelect">Unidade:</label>
@@ -74,13 +87,23 @@
           <button type="submit" class="btn-primary" id="submitButtonPayslip" style="width:100%">Processar e Enviar</button>
         </form>
         
+        </form>
+        </div>
+
+        <div id="notifications" style="display:none">
+          <h3> Notificações</h3>
+          <p>Agende notificações por e-mail para unidades ou colaboradores.</p>
+          <!-- future: notification form -->
+        </div>
+
         <hr>
-        
+
+        <div id="history" style="display:none">
         <form id="colaboradorForm">
           <h3> Novo Colaborador</h3>
           <div class="form-group">
             <label for="colabNome">Nome:</label>
-            <input type="text" id="colabNome" placeholder="Ex: Jo?o Silva" required />
+            <input type="text" id="colabNome" placeholder="Ex: João Silva" required />
           </div>
           <div class="form-group">
             <label for="colabEmail">Email:</label>
@@ -92,34 +115,67 @@
           </div>
           <button type="submit" class="btn-primary" style="width:100%">Salvar Colaborador</button>
         </form>
+        </form>
+        </div>
       </div>
     </aside>
 
     <section class="panel panel-right">
       <div class="panel-header">
-        <h2> Colaboradores Cadastrados</h2>
+        <h2 id="panelTitle">Dashboard</h2>
       </div>
       <div class="panel-body">
-        <div id="status"></div>
-        <table>
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Email</th>
-              <th>Unidade</th>
-              <th style="width: 180px;">A??es</th>
-            </tr>
-          </thead>
-          <tbody id="colabList">
-            <tr><td colspan="4" style="text-align:center;">Carregando...</td></tr>
-          </tbody>
-        </table>
+        <div id="tab-dashboard">
+          <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem">
+            <div style="flex:1;min-width:140px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;padding:1rem;border-radius:8px">
+              <div style="font-size:0.9rem">👥 Total de Colaboradores</div>
+              <div id="stat-colab" style="font-size:1.6rem;font-weight:700">0</div>
+            </div>
+            <div style="flex:1;min-width:140px;background:linear-gradient(90deg,var(--primary),var(--accent));color:white;padding:1rem;border-radius:8px">
+              <div style="font-size:0.9rem">🏢 Unidades Cadastradas</div>
+              <div id="stat-unidades" style="font-size:1.6rem;font-weight:700">0</div>
+            </div>
+            <div style="flex:1;min-width:140px;background:#fff;border:1px solid var(--border);padding:1rem;border-radius:8px">
+              <div style="font-size:0.9rem">⏳ Notificações Pendentes</div>
+              <div id="stat-pending" style="font-size:1.6rem;font-weight:700">0</div>
+            </div>
+            <div style="flex:1;min-width:140px;background:#fff;border:1px solid var(--border);padding:1rem;border-radius:8px">
+              <div style="font-size:0.9rem">❌ Notificações Falhadas</div>
+              <div id="stat-failed" style="font-size:1.6rem;font-weight:700">0</div>
+            </div>
+          </div>
+
+          <h3>Envios Recentes</h3>
+          <div id="recent-sends">📭 Nenhum envio registrado ainda</div>
+        </div>
+
+        <div id="tab-notifications" style="display:none">
+          <h3>Notificações</h3>
+          <p>Gerencie templates e agendamentos de notificações aqui.</p>
+        </div>
+
+        <div id="tab-history" style="display:none">
+          <div id="status"></div>
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Unidade</th>
+                <th style="width: 180px;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="colabList">
+              <tr><td colspan="4" style="text-align:center;">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   </main>
 
   <div id="editModal" class="modal">
-    <div class="modal-content">
+        <div class="modal-content">
       <span class="close-btn" onclick="closeModal()">&times;</span>
       <h2> Editar Colaborador</h2>
       <form id="editForm">
@@ -136,7 +192,7 @@
           <label for="editColabUnidade">Unidade:</label>
           <input type="text" id="editColabUnidade" required />
         </div>
-        <button type="submit" class="btn-primary" style="width:100%">Salvar Altera??es</button>
+  <button type="submit" class="btn-primary" style="width:100%">Salvar Alterações</button>
       </form>
     </div>
   </div>
@@ -147,6 +203,32 @@
   // absoluta para o backend em Render para testes locais.
   // Em produção com Vercel, use a variável de build VITE_API_BASE_URL.
   const API_URL = 'https://notification-service-rmnv.onrender.com/api/v1';
+
+    function showTab(name) {
+      // hide left-area tabs
+      ['send','notifications','history'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = (id === name) ? 'block' : 'none';
+      });
+      // right area tabs
+      ['tab-dashboard','tab-notifications','tab-history'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = (id === ('tab-' + name) || (name === 'dashboard' && id === 'tab-dashboard')) ? 'block' : 'none';
+      });
+      const titleMap = { dashboard: 'Dashboard', send: 'Enviar Holerites', notifications: 'Notificações', history: 'Histórico' };
+      document.getElementById('panelTitle').textContent = titleMap[name] || 'Dashboard';
+    }
+
+    async function updateStats() {
+      try {
+        const colaboradores = await api.get('/colaboradores');
+        const unidades = await api.get('/unidades');
+        document.getElementById('stat-colab').textContent = Array.isArray(colaboradores) ? colaboradores.length : 0;
+        document.getElementById('stat-unidades').textContent = Array.isArray(unidades) ? unidades.length : 0;
+      } catch (e) {
+        // ignore — show zeros
+      }
+    }
 
     // Helper fetch wrapper that checks status before parsing JSON to avoid
     // attempting to parse HTML error pages (which causava 'Unexpected token <').
@@ -327,8 +409,11 @@
     });
 
     document.addEventListener('DOMContentLoaded', () => {
+      // default tab
+      showTab('dashboard');
       carregarUnidades();
       carregarColaboradores();
+      updateStats();
     });
   </script>
 </body>
