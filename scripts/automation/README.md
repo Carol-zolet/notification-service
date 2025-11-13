@@ -50,6 +50,54 @@ $env:VERCEL_PROJECT_ID = '<seu-vercel-project-id>'
 \scripts\automation\deploy_all.ps1 -FrontendUrl 'https://seu-front.vercel.app' -ApiBaseUrl 'https://notification-service-rmnv.onrender.com/api/v1' -Branch 'chore/health-deploy-readme'
 ```
 
+Novo: script orquestrador `auto_full_deploy.ps1`
+-------------------------------------------------
+Esse script centraliza o fluxo e vai solicitar (se não estiverem setadas) as chaves/IDs necessários e executará os passos em sequência.
+
+Uso (PowerShell):
+
+```powershell
+.
+\scripts\automation\auto_full_deploy.ps1
+```
+
+Você pode passar parâmetros opcionais:
+
+```powershell
+.
+\scripts\automation\auto_full_deploy.ps1 -Branch 'chore/health-deploy-readme' -FrontendUrl 'https://seu-front.vercel.app' -ApiBaseUrl 'https://notification-service-rmnv.onrender.com/api/v1'
+```
+
+O script pedirá as variáveis que não estiverem definidas em ambiente:
+- RENDER_API_KEY
+- RENDER_SERVICE_ID
+- VERCEL_TOKEN
+- VERCEL_PROJECT_ID
+
+Ele valida as credenciais com chamadas leves e então invoca os scripts individuais para atualizar envs e disparar deploys.
+
+Segurança: nunca comite as chaves. O script usa as variáveis só na sessão atual.
+
+Rotacionar DATABASE_URL (semi-automático)
+---------------------------------------
+Há um script auxiliar `rotate_database_credentials.ps1` que gera uma nova senha para o usuário do banco,
+tenta aplicar a senha via `psql` (se disponível) e atualiza `DATABASE_URL` no Render.
+
+Uso (recomendado):
+
+```powershell
+# rode no diretório raiz do projeto
+.\scripts\automation\rotate_database_credentials.ps1
+```
+
+O script solicitará a `DATABASE_URL` atual se não estiver definida na variável de ambiente e
+pedirá `RENDER_API_KEY` e `RENDER_SERVICE_ID` para escrever a nova `DATABASE_URL` no Render.
+
+Notas de segurança:
+- Garanta que o `psql` (cliente) esteja instalado se quiser que o script aplique a senha automaticamente.
+- Se preferir, o script imprime o SQL `ALTER USER` pronto para você executar manualmente.
+- Não cole chaves em conversas públicas.
+
 Observações finais
 ------------------
 - Verifique a API/CLI do provedor antes de rodar em produção. Os endpoints de API são usados diretamente pelos scripts; revise os logs e respostas.
