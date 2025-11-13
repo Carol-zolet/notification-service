@@ -11,32 +11,29 @@ const app = express();
 // Prisma client usado para healthcheck e possíveis checagens em runtime
 const prisma = new PrismaClient();
 
-// CORS para permitir chamadas do frontend
+// CORS restritivo: construir lista de origens permitidas a partir de variáveis
+// FRONTEND_URL (única) e CORS_ORIGIN (lista separada por vírgulas opcional).
+const extraOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(o => !!o);
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
-  process.env.FRONTEND_URL, // URL do frontend na Vercel
+  process.env.FRONTEND_URL,
+  ...extraOrigins,
 ].filter(Boolean);
 
-// CORS config: usamos um handler explícito para origin que registra o origin
-// e autoriza temporariamente durante o diagnóstico. IMPORTANTE: reverter
-// para política restritiva após resolver a causa do 500.
 app.use(cors({
   origin: (origin, callback) => {
-    try {
-      // origin pode ser undefined (requests do servidor / curl). Log apenas para debug.
-      console.log('[CORS DEBUG] origin header:', origin || '(nenhum)');
-      // Temporariamente permitir a origem — evita que erros na verificação de
-      // origem causem 500s. Depois podemos restringir a uma allowlist.
-      return callback(null, true);
-    } catch (err) {
-      console.error('[CORS DEBUG] falha no origin handler:', err);
-      // Não recusar a requisição de forma agressiva — retorna sem CORS em caso de erro
-      return callback(null, false);
-    }
+    // Requests sem origin (curl, Postman) são permitidos para facilitar monitoramento.
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    console.warn('[CORS] origem não permitida:', origin);
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }));
 
 // Request logger (leve) para ajudar a diagnosticar 500s ativados por headers
@@ -112,12 +109,3 @@ app.listen(process.env.PORT ? parseInt(process.env.PORT,10) : 3001, () => {
   }
 });
 
-// DEBUG TEMP: permitir qualquer origin (remover assim que diagnosticar)
-app.use((req, res, next) => {
-  console.log('DEBUG Origin header:', req.headers.origin);
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
-  next();
-});
