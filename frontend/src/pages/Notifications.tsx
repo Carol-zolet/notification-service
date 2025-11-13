@@ -40,7 +40,7 @@ export function Notifications() {
       setLoading(true);
       const res = await fetch(`${config.apiBaseUrl}/api/v1/notifications`);
       const data = await res.json();
-      setNotifications(Array.isArray(data) ? data : []);
+      setNotifications(data.items || data || []);
     } catch (error) {
       console.error('Erro ao carregar notificações:', error);
     } finally {
@@ -53,7 +53,7 @@ export function Notifications() {
       setLoading(true);
       const res = await fetch(`${config.apiBaseUrl}/api/v1/notifications/failed?limit=100`);
       const data = await res.json();
-      setFailedNotifications(Array.isArray(data) ? data : []);
+      setFailedNotifications(data.items || data || []);
     } catch (error) {
       console.error('Erro ao carregar notificações falhadas:', error);
     } finally {

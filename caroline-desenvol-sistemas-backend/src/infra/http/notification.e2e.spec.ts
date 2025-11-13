@@ -1,4 +1,4 @@
-﻿import request from 'supertest';
+import request from 'supertest';
 import express from 'express';
 import apiRoutes from './routes';
 

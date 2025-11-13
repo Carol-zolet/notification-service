@@ -1,4 +1,4 @@
-﻿import { SendDueNotificationsUseCase } from '../../application/use-cases/send-due-notifications.use-case';
+import { SendDueNotificationsUseCase } from '../../application/use-cases/send-due-notifications.use-case';
 import { PrismaNotificationRepository } from '../database/repositories/prisma-notification.repository';
 import { MockEmailService } from '../services/mock-email.service';
 

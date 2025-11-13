@@ -1,4 +1,4 @@
-﻿import { ColaboradorRepository } from '../../domain/repositories/IColaborador.repository';
+import { ColaboradorRepository } from '../../domain/repositories/IColaborador.repository';
 
 export class DeleteColaboradorUseCase {
   constructor(private repository: ColaboradorRepository) {}

@@ -1,4 +1,4 @@
-﻿import { IEmailService } from '../../application/services/IEmail.service';
+import { IEmailService } from '../../application/services/IEmail.service';
 
 export class MockEmailService implements IEmailService {
   async sendEmail(to: string, subject: string, body: string): Promise<void> {

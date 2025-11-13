@@ -30,15 +30,18 @@ export function Dashboard() {
     try {
       const [colaboradoresRes, unidadesRes, notificationsRes, failedRes] = await Promise.all([
         fetch(`${config.apiBaseUrl}/api/v1/colaboradores`).catch(() => ({ json: async () => [] })),
-        fetch(`${config.apiBaseUrl}/api/v1/admin/unidades`).catch(() => ({ json: async () => [] })),
-        fetch(`${config.apiBaseUrl}/api/v1/notifications`).catch(() => ({ json: async () => [] })),
-        fetch(`${config.apiBaseUrl}/api/v1/notifications/failed?limit=100`).catch(() => ({ json: async () => [] })),
+        fetch(`${config.apiBaseUrl}/api/admin/unidades`).catch(() => ({ json: async () => [] })),
+        fetch(`${config.apiBaseUrl}/api/v1/notifications`).catch(() => ({ json: async () => ({ items: [] }) })),
+        fetch(`${config.apiBaseUrl}/api/v1/notifications/failed?limit=100`).catch(() => ({ json: async () => ({ items: [] }) })),
       ]);
 
       const colaboradores = await colaboradoresRes.json();
       const unidades = await unidadesRes.json();
-      const notifications = await notificationsRes.json();
-      const failed = await failedRes.json();
+      const notificationsData = await notificationsRes.json();
+      const failedData = await failedRes.json();
+
+      const notifications = notificationsData.items || notificationsData || [];
+      const failed = failedData.items || failedData || [];
 
       const pending = Array.isArray(notifications)
         ? notifications.filter((n: any) => n.status === 'pending').length

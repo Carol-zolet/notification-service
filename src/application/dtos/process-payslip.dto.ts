@@ -1,4 +1,4 @@
-﻿export interface ProcessPayslipDTO {
+export interface ProcessPayslipDTO {
   filial: string;
   file: Express.Multer.File;
 }

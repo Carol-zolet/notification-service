@@ -1,4 +1,4 @@
-﻿import { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { ProcessPayslipUseCase } from '../../../application/use-cases/process-payslip.use-case';
 
 export class PayslipController {

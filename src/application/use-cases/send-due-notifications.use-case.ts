@@ -1,4 +1,4 @@
-﻿import { NotificationRepository } from '../../domain/repositories/INotification.repository';
+import { NotificationRepository } from '../../domain/repositories/INotification.repository';
 import { IEmailService } from '../services/IEmail.service';
 
 export class SendDueNotificationsUseCase {
