@@ -1,29 +1,39 @@
-import { SendDueNotificationsUseCase } from '../../../application/use-cases/send-due-notifications.use-cases';
-import { PrismaNotificationRepository } from '../database/repositories/prisma-notification.repository';
-import { NodemailerService } from '../services/nodemailer.service';
+import "dotenv/config";
+import express from "express";
+import { notificationRoutes } from './http/routes/notification.routes';
+import { NotificationWorker } from "./infra/workers/notification.worker";
 
-export class NotificationWorker {
-    private readonly useCase: SendDueNotificationsUseCase;
+const app = express();
 
-    constructor() {
-        const repo = new PrismaNotificationRepository();
-        const email = new NodemailerService();
-        this.useCase = new SendDueNotificationsUseCase(repo, email);
-    }
+// Middlewares
+app.use(express.json());
 
-    async executeJob() {
-        console.log('[Worker] Verificando notificações pendentes...');
-        try {
-            await this.useCase.execute();
-            console.log('[Worker] Ciclo concluído com sucesso.\n');
-        } catch (err) {
-            console.error('[Worker] Erro ao processar notificações:', err);
-        }
-    }
+// Rotas de saúde
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
-    start(intervalMs: number = 60000) { 
-        console.log(`[Worker] Iniciado. Intervalo: ${intervalMs / 1000} segundos\n`);
-        this.executeJob();
-        setInterval(() => this.executeJob(), intervalMs);
-    }
-}
+// Rotas de notificações
+app.use("/api/notifications", notificationRoutes);
+
+// Tratamento de erros global
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("Erro não tratado:", err);
+  res.status(500).json({ 
+    error: "Erro interno do servidor",
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+});
+
+// Inicia o servidor
+const PORT = parseInt(process.env.PORT || "3001", 10);
+
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`📍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Inicia o worker de notificações
+  const worker = new NotificationWorker();
+  const intervalMs = parseInt(process.env.NOTIFICATION_WORKER_INTERVAL_MS || "60000", 10);
+  worker.start(intervalMs);
+});
