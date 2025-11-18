@@ -31,18 +31,25 @@ class ReprocessFailedNotificationsUseCase {
     const results = await Promise.all(items.map(async (n: any) => {
       try {
         // try a basic send; adapt to your emailService API (send or sendWithAttachments)
+        let sendResult: any = undefined;
         if (typeof this.emailService.send === "function") {
-          await this.emailService.send(n.email, n.subject, n.message);
+          sendResult = await this.emailService.send(n.email, n.subject, n.message);
         } else if (typeof this.emailService.sendWithAttachments === "function") {
-          await this.emailService.sendWithAttachments(n.email, n.subject, n.message, []);
+          sendResult = await this.emailService.sendWithAttachments(n.email, n.subject, n.message, []);
         } else {
           throw new Error("emailService has no send method");
         }
 
-        await this.prisma.notification.update({
-          where: { id: n.id },
-          data: { status: "sent", sentAt: new Date() },
-        });
+        const accepted = sendResult && (sendResult.accepted || sendResult.accepted === 0 ? sendResult.accepted : undefined);
+        const ok = (accepted === undefined) || (Array.isArray(accepted) && accepted.length > 0);
+
+        if (!ok) {
+          console.error(` Reprocess: SMTP did not accept recipients for ${n.id}:`, { sendResult });
+          await this.prisma.notification.update({ where: { id: n.id }, data: { status: "failed", retryCount: n.retryCount + 1 } });
+          return { id: n.id, ok: false, error: 'SMTP did not accept recipients' };
+        }
+
+        await this.prisma.notification.update({ where: { id: n.id }, data: { status: "sent", sentAt: new Date() } });
 
         return { id: n.id, ok: true };
       } catch (e: any) {

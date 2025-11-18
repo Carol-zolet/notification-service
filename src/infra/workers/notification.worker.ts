@@ -61,39 +61,53 @@ export class NotificationWorker {
 
       for (const n of pending) {
         try {
-          if (this.emailService.sendWithAttachments) {
-            await this.emailService.sendWithAttachments(
-              n.email,       // ← CORRIGIDO
+          // Normaliza chamadas de envio para aceitar ambos os serviços (mock e nodemailer)
+          let result: any = undefined;
+
+          if (typeof this.emailService.sendWithAttachments === 'function') {
+            result = await this.emailService.sendWithAttachments(
+              n.email,
               n.subject,
-              n.message || "",  // ← CORRIGIDO
+              n.message || "",
               []
             );
+          } else if (typeof this.emailService.send === 'function') {
+            result = await this.emailService.send(n.email, n.subject, n.message || "");
           } else {
-            await (this.emailService as any).send({
-              to: n.email,       // ← CORRIGIDO
-              subject: n.subject,
-              html: n.message || "",  // ← CORRIGIDO
-            });
+            throw new Error('emailService has no send method');
           }
+
+          // Verifica resultado: Nodemailer retorna um objeto 'info' com accepted/rejected.
+          const accepted = result && (result.accepted || result.accepted === 0 ? result.accepted : undefined);
+          const ok = (accepted === undefined) || (Array.isArray(accepted) && accepted.length > 0);
+
+          if (!ok) {
+            console.error(` Envio não aceito pelo servidor SMTP para notificação ${n.id}:`, { result });
+            throw new Error('SMTP did not accept recipients');
+          }
+
+          console.log(` Notificação ${n.id} enviada com sucesso.`, { result });
 
           await this.prisma.notification.update({
             where: { id: n.id },
             data: {
               status: "sent",
               sentAt: new Date(),
-              // errorMessage removido ← CORRIGIDO
             },
           });
         } catch (e: any) {
-          console.error(` Falha ao enviar notificação ${n.id}:`, e.message);
-          await this.prisma.notification.update({
-            where: { id: n.id },
-            data: {
-              status: "failed",
-              retryCount: n.retryCount + 1,
-              // errorMessage removido ← CORRIGIDO
-            },
-          });
+          console.error(` Falha ao enviar notificação ${n.id}:`, e?.message || e);
+          try {
+            await this.prisma.notification.update({
+              where: { id: n.id },
+              data: {
+                status: "failed",
+                retryCount: n.retryCount + 1,
+              },
+            });
+          } catch (uerr) {
+            console.error(` Erro ao atualizar status da notificação ${n.id}:`, uerr);
+          }
         }
       }
 
