@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors'; // <--- ADICIONADO
 import routes from './http/routes';
-import './workers/notification.worker';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
