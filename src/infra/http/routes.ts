@@ -66,6 +66,11 @@ router.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// Root do API v1: resposta simples para facilitar checagens e evitar 404 em GET /api/v1/
+router.get('/', (_req, res) => {
+  res.json({ service: 'notification-service', api: 'v1', status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Unidades
 router.get("/unidades", async (_req, res) => {
   const unidades = await prisma.colaborador.findMany({
