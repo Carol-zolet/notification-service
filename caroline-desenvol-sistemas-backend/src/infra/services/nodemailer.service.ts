@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { EmailService } from '../../domain/services/email.service';
+import { EmailService } from '../../domain/services/IEmail.service'; // Use o caminho correto do seu IEmailService
 
 export class NodemailerService implements EmailService {
   private transporter: nodemailer.Transporter;
@@ -9,6 +9,7 @@ export class NodemailerService implements EmailService {
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: Number(process.env.SMTP_PORT) || 587,
       secure: false,
+      requireTLS: true, // <--- CORREÇÃO: FORÇA O STARTTLS NA PORTA 587
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
@@ -24,7 +25,7 @@ export class NodemailerService implements EmailService {
         subject: options.subject,
         html: options.body,
       });
-      
+
       console.log(`Email enviado para ${options.to}`);
     } catch (error) {
       console.error('Erro ao enviar email:', error);
