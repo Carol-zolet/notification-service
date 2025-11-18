@@ -1,32 +1,39 @@
-import express from 'express';
-import cors from 'cors';
-import routes from './http/routes';
+import "dotenv/config";
+import express from "express";
+import notificationRoutes from './http/routes/notification.routes';
+import { NotificationWorker } from "./infra/workers/notification.worker";
 
-// Esta é a porta PRINCIPAL que o Render deve usar.
-// O valor 10000 foi removido. Se o Render falhar, usará 3001 (local).
-const PORT = process.env.PORT || 3001;
+const app = express();
 
-const app = express(); // 🛠️ CORRIGIDO: Agora 'app' está definido neste escopo
-
-// --- CONFIGURAÇÃO DE SEGURANÇA (CORS) ---
-app.use(cors({
-    origin: [
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "https://carolinenotificacoes.page",
-        "https://www.carolinenotificacoes.page",
-        "https://api.carolinenotificacoes.page"
-    ],
-    credentials: true
-}));
-// ----------------------------------------
-
+// Middlewares
 app.use(express.json());
-app.use('/api', routes);
 
-// O '0.0.0.0' garante que o container escute em todas as interfaces, obrigatório no Render.
-app.listen(PORT, '0.0.0.0', () => {
-    // 💡 Ajuste de log: Usamos a porta dinâmica do Render
-    console.log(`Servidor de Alertas API rodando na porta ${PORT}`);
-    console.log(`Health check: /api/health`);
+// Rotas de saúde
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Rotas de notificações
+app.use("/api/notifications", notificationRoutes);
+
+// Tratamento de erros global
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("Erro não tratado:", err);
+  res.status(500).json({ 
+    error: "Erro interno do servidor",
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+});
+
+// Inicia o servidor
+const PORT = parseInt(process.env.PORT || "3001", 10);
+
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`📍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Inicia o worker de notificações
+  const worker = new NotificationWorker();
+  const intervalMs = parseInt(process.env.NOTIFICATION_WORKER_INTERVAL_MS || "60000", 10);
+  worker.start(intervalMs);
 });
