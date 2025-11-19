@@ -30,7 +30,7 @@ export function History() {
 
   const fetchUnidades = async () => {
     try {
-      const res = await fetch(`${config.apiBaseUrl}/api/v1/unidades`);
+      const res = await fetch(`${config.apiBaseUrl}/unidades`);
       const data = await res.json();
       setUnidades(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -41,7 +41,7 @@ export function History() {
   const fetchHistory = async () => {
     try {
       setLoading(true);
-      const url = `${config.apiBaseUrl}/api/v1/payslips/history?page=${currentPage}&limit=10${filterUnidade ? `&unidade=${encodeURIComponent(filterUnidade)}` : ''}`;
+      const url = `${config.apiBaseUrl}/payslips/history?page=${currentPage}&limit=10${filterUnidade ? `&unidade=${encodeURIComponent(filterUnidade)}` : ''}`;
       const res = await fetch(url);
       const data = await res.json();
 

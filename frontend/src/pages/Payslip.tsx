@@ -60,7 +60,7 @@ export function Payslip() {
 
   const fetchUnidades = async () => {
     try {
-      const res = await fetch(`${config.apiBaseUrl}/api/v1/admin/unidades`);
+      const res = await fetch(`${config.apiBaseUrl}/admin/unidades`);
       const data = await res.json();
       setUnidades(data.map((u: any) => u.unidade).sort());
     } catch (error) {
@@ -71,7 +71,7 @@ export function Payslip() {
   const fetchColaboradores = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${config.apiBaseUrl}/api/v1/admin/colaboradores?unidade=${encodeURIComponent(unidade)}`);
+      const res = await fetch(`${config.apiBaseUrl}/admin/colaboradores?unidade=${encodeURIComponent(unidade)}`);
       const data = await res.json();
       setTodosColaboradores(data);
       setColaboradoresFiltrados(data);
@@ -109,7 +109,7 @@ export function Payslip() {
       formData.append('subject', assunto);
       formData.append('message', mensagem);
 
-      const res = await fetch(`${config.apiBaseUrl}/api/v1/payslips/distribuir`, {
+      const res = await fetch(`${config.apiBaseUrl}/payslips/distribuir`, {
         method: 'POST',
         body: formData,
       });

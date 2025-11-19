@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  connection_limit = 3 // ou um valor baixo, tipo 2~5
 }
 
 model Colaborador {
