@@ -14,7 +14,7 @@ app.get("/health", (_req, res) => {
 });
 
 // Rotas de notificações
-app.use("/notifications", notificationRoutes);
+app.use("/", notificationRoutes);
 
 // Tratamento de erros global
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
