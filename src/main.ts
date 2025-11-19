@@ -1,4 +1,3 @@
-
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -24,6 +23,10 @@ app.get("/health", (_req, res) => {
 });
 
 // Rotas de notificações
+app.get('/', (req, res) => {
+  res.send({ status: 'API online' });
+});
+
 app.use("/", notificationRoutes);
 
 // Tratamento de erros global
