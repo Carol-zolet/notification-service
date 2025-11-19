@@ -1,0 +1,28 @@
+# Arquivos e pastas ignorados pelo Git
+node_modules/
+dist/
+.env
+.env.*
+*.sqlite
+*.log
+coverage/
+tmp/
+public/admin/
+_backup_*/
+*.csv
+*.bak
+*.backup
+
+# IDE/Editor
+.vscode/
+*.code-workspace
+
+# Testes e relatórios
+*.test.js
+*.spec.js
+*.spec.ts
+*.test.ts
+
+# Outros
+.DS_Store
+Thumbs.db

@@ -36,4 +36,3 @@ model SendHistory {
   testRecipient String?
   createdAt     DateTime @default(now())
 }
-
