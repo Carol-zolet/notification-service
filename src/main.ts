@@ -1,9 +1,19 @@
+
 import "dotenv/config";
 import express from "express";
+import cors from "cors";
 import notificationRoutes from './infra/http/routes';
 import { NotificationWorker } from "./infra/workers/notification.worker";
 
+
 const app = express();
+
+// CORS seguro
+const allowedOrigin = process.env.CORS_ORIGIN || "*";
+app.use(cors({
+  origin: allowedOrigin,
+  credentials: true
+}));
 
 // Middlewares
 app.use(express.json());
