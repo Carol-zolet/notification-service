@@ -12,7 +12,7 @@
     "resolveJsonModule": true,
     "noImplicitAny": false,
     "moduleResolution": "node",
-    "types": ["node", "jest"]
+    "types": ["node"]
   },
   "include": ["src"],
   "exclude": ["src/scripts", "**/*.spec.ts", "**/*.test.ts"]
