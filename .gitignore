@@ -1,20 +1,42 @@
-# Arquivos e pastas ignorados pelo Git
+# Dependências
 node_modules/
 dist/
+
+# Variáveis de ambiente
 .env
+.env.*
+!.env.example
+
+# Banco de dados
+*.sqlite
+*.db
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testes
 coverage/
+
+# Arquivos temporários
+tmp/
+*.tmp
+
+# Backups
+*.csv
+*.bak
+*.backup
+_backup_*/
+
+# Build output
+public/admin/
 
 # IDE/Editor
 .vscode/
-*.code-workspace
-
-# Testes e relatórios
-*.test.js
-*.spec.js
-*.spec.ts
-*.test.ts
-
-# Outros
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
-Thumbs.db
