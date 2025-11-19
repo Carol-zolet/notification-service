@@ -1,39 +1,17 @@
-import "dotenv/config";
-import express from "express";
-import { notificationRoutes } from './http/routes/notification.routes';
-import { NotificationWorker } from "./infra/workers/notification.worker";
+import { SendDueNotificationsUseCase } from '../../application/use-cases/send-due-notifications.use-case';
+import { PrismaNotificationRepository } from '../database/repositories/prisma-notification.repository';
+import { NodemailerService } from '../services/nodemailer.service';
+import { MockEmailService } from '../services/mock-email.service';
+import { PrismaClient } from '@prisma/client';
 
-const app = express();
-
-// Middlewares
-app.use(express.json());
-
-// Rotas de saúde
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
-
-// Rotas de notificações
-app.use("/api/notifications", notificationRoutes);
-
-// Tratamento de erros global
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error("Erro não tratado:", err);
-  res.status(500).json({ 
-    error: "Erro interno do servidor",
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
-});
-
-// Inicia o servidor
-const PORT = parseInt(process.env.PORT || "3001", 10);
-
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`📍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-  
-  // Inicia o worker de notificações
-  const worker = new NotificationWorker();
-  const intervalMs = parseInt(process.env.NOTIFICATION_WORKER_INTERVAL_MS || "60000", 10);
-  worker.start(intervalMs);
-});
+export class NotificationWorker {
+  constructor(intervalMs: number) {
+    console.log(`⏰ Worker de notificações iniciado. Intervalo: ${intervalMs}ms`);
+    setInterval(async () => {
+      const repository = new PrismaNotificationRepository();
+      const emailService = process.env.SMTP_HOST ? new NodemailerService() : new MockEmailService();
+      const useCase = new SendDueNotificationsUseCase(repository, emailService);
+      await useCase.execute();
+    }, intervalMs);
+  }
+}

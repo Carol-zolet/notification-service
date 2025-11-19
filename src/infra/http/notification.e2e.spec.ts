@@ -1,4 +1,7 @@
-﻿import request from 'supertest';
+﻿import dotenv from 'dotenv';
+dotenv.config();
+
+import request from 'supertest';
 import express from 'express';
 import apiRoutes from './routes';
 
@@ -13,12 +16,12 @@ describe('Notificações - API', () => {
 
   it('deve agendar uma notificação com sucesso', async () => {
     const response = await request(app)
-      .post('/api/notifications/schedule')
+      .post('/api/notifications') // Corrigido para rota existente
       .send({
         email: 'teste@exemplo.com',
         subject: 'Assunto de Teste',
         message: 'Corpo da notificação',
-        scheduledFor: new Date(Date.now() + 60000).toISOString()
+        scheduledAt: new Date(Date.now() + 60000).toISOString()
       });
     
     expect(response.status).toBeGreaterThanOrEqual(200);

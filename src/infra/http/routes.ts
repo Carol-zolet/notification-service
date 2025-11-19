@@ -101,7 +101,8 @@ router.post("/notifications", async (req, res) => {
     });
     res.status(201).json(created);
   } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    console.error("Erro ao agendar notificação:", e);
+    res.status(500).json({ error: e.message, stack: e.stack });
   }
 });
 

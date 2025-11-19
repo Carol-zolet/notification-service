@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import notificationRoutes from './http/routes/notification.routes';
+import notificationRoutes from './infra/http/routes';
 import { NotificationWorker } from "./infra/workers/notification.worker";
 
 const app = express();
@@ -14,7 +14,7 @@ app.get("/health", (_req, res) => {
 });
 
 // Rotas de notificações
-app.use("/api/notifications", notificationRoutes);
+app.use("/notifications", notificationRoutes);
 
 // Tratamento de erros global
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -33,7 +33,6 @@ app.listen(PORT, () => {
   console.log(`📍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
   
   // Inicia o worker de notificações
-  const worker = new NotificationWorker();
   const intervalMs = parseInt(process.env.NOTIFICATION_WORKER_INTERVAL_MS || "60000", 10);
-  worker.start(intervalMs);
+  new NotificationWorker(intervalMs);
 });

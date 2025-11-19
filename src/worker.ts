@@ -1,8 +1,8 @@
-// Este arquivo deve ser executado APENAS no serviço Worker do Render.
+// Arquivo standalone para rodar o worker independentemente do servidor HTTP
+import "dotenv/config";
+import { NotificationWorker } from "./infra/workers/notification.worker";
 
-import { NotificationWorker } from './infra/workers/notification.worker'; 
+console.log("🤖 Iniciando Worker de Notificações...\n");
 
-// Inicia o processo de worker que roda em intervalo (setInterval)
-new NotificationWorker().start(60000); 
-
-console.log('Serviço Worker iniciado com sucesso.');
+const intervalMs = parseInt(process.env.NOTIFICATION_WORKER_INTERVAL_MS || "60000", 10);
+new NotificationWorker(intervalMs);
