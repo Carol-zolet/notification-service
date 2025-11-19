@@ -2,16 +2,8 @@
 node_modules/
 dist/
 .env
-.env.*
-*.sqlite
 *.log
 coverage/
-tmp/
-public/admin/
-_backup_*/
-*.csv
-*.bak
-*.backup
 
 # IDE/Editor
 .vscode/
