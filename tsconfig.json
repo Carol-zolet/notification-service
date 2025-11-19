@@ -12,8 +12,8 @@
     "resolveJsonModule": true,
     "noImplicitAny": false,
     "moduleResolution": "node",
-    "types": ["node"]
+    "types": ["node", "jest"]
   },
   "include": ["src"],
-  "exclude": ["src/scripts", "**/*.spec.ts", "**/*.test.ts"]
+  "exclude": ["src/scripts"]
 }

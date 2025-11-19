@@ -5,9 +5,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 require("dotenv/config");
 const express_1 = __importDefault(require("express"));
+const cors_1 = __importDefault(require("cors"));
 const routes_1 = __importDefault(require("./infra/http/routes"));
 const notification_worker_1 = require("./infra/workers/notification.worker");
 const app = (0, express_1.default)();
+// CORS seguro
+const allowedOrigin = process.env.CORS_ORIGIN || "*";
+app.use((0, cors_1.default)({
+    origin: allowedOrigin,
+    credentials: true
+}));
 // Middlewares
 app.use(express_1.default.json());
 // Rotas de saúde
@@ -15,7 +22,7 @@ app.get("/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 // Rotas de notificações
-app.use("/notifications", routes_1.default);
+app.use("/", routes_1.default);
 // Tratamento de erros global
 app.use((err, _req, res, _next) => {
     console.error("Erro não tratado:", err);
