@@ -29,10 +29,10 @@ export function Dashboard() {
   const fetchStats = async () => {
     try {
       const [colaboradoresRes, unidadesRes, notificationsRes, failedRes] = await Promise.all([
-        fetch(`${config.apiBaseUrl}/api/v1/colaboradores`).catch(() => ({ json: async () => [] })),
-        fetch(`${config.apiBaseUrl}/api/v1/admin/unidades`).catch(() => ({ json: async () => [] })),
-        fetch(`${config.apiBaseUrl}/api/v1/notifications`).catch(() => ({ json: async () => [] })),
-        fetch(`${config.apiBaseUrl}/api/v1/notifications/failed?limit=100`).catch(() => ({ json: async () => [] })),
+        fetch(`${config.apiBaseUrl}/colaboradores`).catch(() => ({ json: async () => [] })),
+        fetch(`${config.apiBaseUrl}/admin/unidades`).catch(() => ({ json: async () => [] })),
+        fetch(`${config.apiBaseUrl}/notifications`).catch(() => ({ json: async () => [] })),
+        fetch(`${config.apiBaseUrl}/notifications/failed?limit=100`).catch(() => ({ json: async () => [] })),
       ]);
 
       const colaboradores = await colaboradoresRes.json();
@@ -60,7 +60,7 @@ export function Dashboard() {
 
   const fetchRecentHistory = async () => {
     try {
-      const res = await fetch(`${config.apiBaseUrl}/api/v1/payslips/history?page=1&limit=5`);
+      const res = await fetch(`${config.apiBaseUrl}/payslips/history?page=1&limit=5`);
       const data = await res.json();
       setRecentHistory(Array.isArray(data.history) ? data.history : []);
     } catch (error) {
