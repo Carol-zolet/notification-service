@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
     "types": ["jest", "node"]
-  }
+  },
+  "exclude": ["node_modules", "dist", "frontend"]
 }

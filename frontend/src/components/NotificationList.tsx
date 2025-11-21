@@ -11,8 +11,9 @@ export type Notification = {
 };
 
 const fetchNotifications = async (): Promise<Notification[]> => {
-  // Simulação de fetch para testes
-  return [];
+  const res = await fetch('http://localhost:3000/api/notifications');
+  if (!res.ok) throw new Error('Erro ao buscar notificações');
+  return await res.json();
 };
 
 const NotificationList: React.FC = () => {
@@ -35,10 +36,17 @@ const NotificationList: React.FC = () => {
       });
   }, []);
 
-  const handleMarkAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      await fetch(`http://localhost:3000/api/notifications/${id}/read`, {
+        method: 'PATCH',
+      });
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
+    } catch (error) {
+      setError('Erro ao marcar como lida');
+    }
   };
 
   const handleDelete = (id: string) => {

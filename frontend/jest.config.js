@@ -9,5 +9,9 @@ export default {
     '**/__tests__/**/*.(test|spec).[jt]s?(x)',
     '**/?(*.)+(test|spec).[jt]s?(x)'
   ],
+  transform: {
+    '^.+\\.(ts|tsx)$': 'ts-jest',
+  },
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   roots: ['<rootDir>/src'],
 };
