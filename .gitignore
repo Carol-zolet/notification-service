@@ -40,3 +40,5 @@ public/admin/
 *.swo
 *~
 .DS_Store
+
+.env
