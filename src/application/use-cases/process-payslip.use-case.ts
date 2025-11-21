@@ -1,130 +1,86 @@
+import { ColaboradorRepository } from '../../domain/repositories/IColaborador.repository';
+import { IEmailService } from '../services/IEmail.service';
 import { PdfSplitterService, SplitPayslip } from '../services/pdf-splitter.service';
-import { EmailService } from '../services/email.service';
-import { EmployeeRepository } from '../../infra/database/repositories/employee.repository';
+
+interface PayslipFile {
+  filename: string;
+  buffer: Buffer;
+}
 
 interface ProcessResult {
   processed: number;
-  sent: number;
   failed: number;
-  details: Array<{
-    cpf: string;
-    nome: string | null;
-    email?: string;
-    status: 'sent' | 'failed' | 'not_found';
-    error?: string;
-  }>;
+  total: number;
+  notFound: number;
 }
 
 export class ProcessPayslipUseCase {
+  private pdfSplitter: PdfSplitterService;
+
   constructor(
-    private pdfSplitter: PdfSplitterService,
-    private emailService: EmailService,
-    private employeeRepository: EmployeeRepository
-  ) {}
+    private colaboradorRepository: ColaboradorRepository,
+    private emailService: IEmailService
+  ) {
+    this.pdfSplitter = new PdfSplitterService();
+  }
 
   async execute(
     unidade: string,
-    file: { filename: string; buffer: Buffer },
-    subject?: string,
-    message?: string
+    file: PayslipFile,
+    subject: string = 'Holerite',
+    messageTemplate: string = 'Olá {{nome}}, segue seu holerite de {{unidade}}.'
   ): Promise<ProcessResult> {
-    const result: ProcessResult = {
-      processed: 0,
-      sent: 0,
-      failed: 0,
-      details: [],
-    };
+    console.log(`\n🚀 Iniciando processamento de holerites para unidade: ${unidade}`);
+
+    const result: ProcessResult = { processed: 0, failed: 0, total: 0, notFound: 0 };
 
     try {
-      console.log(`📄 Processando arquivo: ${file.filename}`);
-      console.log(`🏢 Unidade: ${unidade}`);
+      const payslips = await this.pdfSplitter.splitBatchPdf(file.buffer);
+      result.total = payslips.length;
 
-      // 1. Separar holerites do PDF
-      const payslips = await this.pdfSplitter.split(file.buffer);
-      result.processed = payslips.length;
+      if (payslips.length === 0) {
+        throw new Error('Nenhum holerite identificado no PDF.');
+      }
 
-      console.log(`✅ ${payslips.length} holerites encontrados`);
+      console.log(`\n📧 Etapa 2: Enviando emails (${payslips.length} holerites)...\n`);
 
-      // 2. Processar cada holerite
       for (const payslip of payslips) {
         try {
-          console.log(`\n🔍 Processando: CPF ${payslip.cpf} | Nome: ${payslip.nome || 'N/A'}`);
+          const colaborador = await this.colaboradorRepository.findByNome(payslip.nome, unidade);
 
-          // Validar se o nome foi extraído
-          if (!payslip.nome) {
-            result.failed++;
-            result.details.push({
-              cpf: payslip.cpf,
-              nome: null,
-              status: 'failed',
-              error: 'Nome não encontrado no PDF',
-            });
-            console.log(`❌ Nome não encontrado no PDF`);
+          if (!colaborador) {
+            console.log(`  ⚠️  ${payslip.nome} não encontrado`);
+            result.notFound++;
             continue;
           }
 
-          // 3. Buscar funcionário no banco por NOME e UNIDADE
-          const employee = await this.employeeRepository.findByNameAndUnit(
-            payslip.nome,
-            unidade
+          const personalizedMessage = messageTemplate
+            .replace(/\{\{\s*nome\s*\}\}/gi, colaborador.nome)
+            .replace(/\{\{\s*unidade\s*\}\}/gi, colaborador.unidade);
+
+          const filename = `${new Date().toISOString().slice(0, 7)}-${colaborador.nome.replace(/\s+/g, '-')}_HOLERITE.pdf`;
+
+          await this.emailService.sendWithAttachments(
+            colaborador.email,
+            subject,
+            personalizedMessage,
+            [{ filename, content: payslip.pdfBuffer }]
           );
 
-          if (!employee) {
-            result.failed++;
-            result.details.push({
-              cpf: payslip.cpf,
-              nome: payslip.nome,
-              status: 'not_found',
-              error: `Funcionário '${payslip.nome}' não encontrado na unidade ${unidade}`,
-            });
-            console.log(`❌ Funcionário não encontrado no banco de dados`);
-            continue;
-          }
-
-          console.log(`✅ Funcionário encontrado: ${employee.email}`);
-
-          // 4. Enviar email
-          const emailSubject = subject || 'Seu Holerite';
-          const emailMessage = message || 'Segue em anexo seu holerite mensal.';
-
-          await this.emailService.sendPayslip(
-            employee.email,
-            employee.nome,
-            payslip.pdfBuffer,
-            emailSubject,
-            emailMessage
-          );
-
-          result.sent++;
-          result.details.push({
-            cpf: payslip.cpf,
-            nome: payslip.nome,
-            email: employee.email,
-            status: 'sent',
-          });
-
-          console.log(`✅ Email enviado para ${employee.email}`);
-
-        } catch (error: any) {
+          console.log(`  ✅ ${colaborador.nome} (${colaborador.email})`);
+          result.processed++;
+        } catch (error) {
+          console.error(`  ❌ Erro: ${payslip.nome}:`, error.message);
           result.failed++;
-          result.details.push({
-            cpf: payslip.cpf,
-            nome: payslip.nome || null,
-            status: 'failed',
-            error: error.message,
-          });
-          console.error(`❌ Erro ao processar holerite:`, error.message);
         }
       }
 
-      console.log(`\n📊 Resumo:`);
-      console.log(`   Processados: ${result.processed}`);
-      console.log(`   Enviados: ${result.sent}`);
-      console.log(`   Falhas: ${result.failed}`);
-
-    } catch (error: any) {
-      console.error('❌ Erro ao processar arquivo:', error);
-      throw new Error(`Erro ao processar holerites: ${error.message}`);
+      console.log('\n' + '='.repeat(60));
+      console.log(`✅ Enviados: ${result.processed} | ❌ Falhas: ${result.failed} | ⚠️  Não encontrados: ${result.notFound}`);
+      console.log('='.repeat(60) + '\n');
+    } catch (error) {
+      console.error('\n❌ ERRO CRÍTICO:', error.message);
+      throw error;
     }
 
     return result;

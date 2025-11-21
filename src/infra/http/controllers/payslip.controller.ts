@@ -68,14 +68,14 @@ export class PayslipController {
 
       console.log(`\n🚀 Iniciando processamento individualizado para unidade: ${unidade}`);
 
-      const result = await this.processPayslipUseCase.executeWithSplit(
+      const result = await this.processPayslipUseCase.execute(
         unidade,
         {
           filename: file.originalname,
-          buffer: file.buffer,
+          buffer: file.buffer,     
         },
-        subject,
-        message
+        subject || 'Holerite',
+        message || 'Olá {{nome}}, segue seu holerite de {{unidade}}.'
       );
 
       res.json({
@@ -86,7 +86,6 @@ export class PayslipController {
         failed: result.failed,
         notFound: result.notFound,
         total: result.total,
-        details: result.details,
       });
     } catch (error: any) {
       console.error('Erro no controller processSplit:', error);

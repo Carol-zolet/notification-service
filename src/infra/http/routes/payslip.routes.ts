@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import * as multer from 'multer';
+import multer from 'multer';
 import { PayslipController } from '../controllers/payslip.controller';
 import { ProcessPayslipUseCase } from '../../../application/use-cases/process-payslip.use-case';
-import { PdfSplitterService } from '../../../application/services/pdf-splitter.service';
 import { NodemailerService } from '../../services/nodemailer.service';
-import { EmployeeRepository } from '../../database/repositories/employee.repository';
+import { PrismaColaboradorRepository } from '../../database/repositories/prisma-colaborador.repository';
+import { prisma } from '../../database/prisma';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -20,14 +20,12 @@ const upload = multer({
   },
 });
 
-const pdfSplitterService = new PdfSplitterService();
 const emailService = new NodemailerService();
-const employeeRepository = new EmployeeRepository();
+const colaboradorRepository = new PrismaColaboradorRepository(prisma);
 
 const processPayslipUseCase = new ProcessPayslipUseCase(
-  pdfSplitterService,
-  emailService,
-  employeeRepository
+  colaboradorRepository,
+  emailService
 );
 
 const payslipController = new PayslipController(processPayslipUseCase);
@@ -43,25 +41,12 @@ router.post(
   }
 );
 
-// Nova rota: processamento individualizado por nome
 router.post(
-  '/process/split',
+  '/process-split',
   upload.single('file'),
-  async (req, res) => {
-    try {
-      await payslipController.process(req, res);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message || 'Erro ao processar holerites individualizados' });
-    }
+  (req, res) => {
+    payslipController.processSplit(req, res);
   }
 );
-
-router.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    service: 'payslip-processor',
-    timestamp: new Date().toISOString(),
-  });
-});
 
 export default router;
