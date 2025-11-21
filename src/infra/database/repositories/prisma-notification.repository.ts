@@ -1,16 +1,11 @@
 // src/infra/database/repositories/prisma-notification.repository.ts
-import { PrismaClient } from "@prisma/client";
+import { prisma } from '../prisma';
 
 export class PrismaNotificationRepository {
-  private readonly prisma: PrismaClient;
-
-  constructor() {
-    this.prisma = new PrismaClient();
-  }
+  private readonly prisma = prisma;
 
   async findPendingNotifications(batchSize: number): Promise<any[]> {
     const now = new Date();
-    
     return await this.prisma.notification.findMany({
       where: {
         status: "pending",
@@ -40,7 +35,6 @@ export class PrismaNotificationRepository {
       where: { id },
       select: { retryCount: true },
     });
-
     if (notification) {
       await this.prisma.notification.update({
         where: { id },

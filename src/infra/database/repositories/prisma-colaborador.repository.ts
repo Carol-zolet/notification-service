@@ -6,7 +6,7 @@ export class PrismaColaboradorRepository implements ColaboradorRepository {
   constructor(private prisma: PrismaClient) {}
 
   async create(data: Omit<Colaborador, 'id' | 'createdAt'>): Promise<Colaborador> {
-    const novo = await this.prisma.colaborador.create({ 
+    const novo = await this.prisma.colaborador.create({
       data: {
         nome: data.nome,
         email: data.email,
@@ -32,6 +32,29 @@ export class PrismaColaboradorRepository implements ColaboradorRepository {
     const found = await this.prisma.colaborador.findUnique({ where: { email } });
     if (!found) return null;
     return { id: found.id, email: found.email, nome: found.nome, unidade: found.unidade, createdAt: found.createdAt };
+  }
+
+  async findByNome(nome: string, unidade: string): Promise<Colaborador | null> {
+    // Busca exata por nome (case-insensitive) dentro da unidade
+    const found = await this.prisma.colaborador.findFirst({
+      where: {
+        nome: {
+          equals: nome,
+          mode: 'insensitive' // Case-insensitive
+        },
+        unidade: unidade
+      }
+    });
+    
+    if (!found) return null;
+    
+    return {
+      id: found.id,
+      email: found.email,
+      nome: found.nome,
+      unidade: found.unidade,
+      createdAt: found.createdAt
+    };
   }
 
   async findByUnidade(unidade: string): Promise<Colaborador[]> {

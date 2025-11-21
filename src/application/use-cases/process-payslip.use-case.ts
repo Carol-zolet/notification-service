@@ -1,56 +1,132 @@
-﻿import { ColaboradorRepository } from '../../domain/repositories/IColaborador.repository';
-import { IEmailService } from '../services/IEmail.service';
+import { PdfSplitterService, SplitPayslip } from '../services/pdf-splitter.service';
+import { EmailService } from '../services/email.service';
+import { EmployeeRepository } from '../../infra/database/repositories/employee.repository';
 
-interface PayslipFile {
-  filename: string;
-  buffer: Buffer;
+interface ProcessResult {
+  processed: number;
+  sent: number;
+  failed: number;
+  details: Array<{
+    cpf: string;
+    nome: string | null;
+    email?: string;
+    status: 'sent' | 'failed' | 'not_found';
+    error?: string;
+  }>;
 }
 
 export class ProcessPayslipUseCase {
   constructor(
-    private colaboradorRepository: ColaboradorRepository,
-    private emailService: IEmailService
+    private pdfSplitter: PdfSplitterService,
+    private emailService: EmailService,
+    private employeeRepository: EmployeeRepository
   ) {}
 
   async execute(
     unidade: string,
-    file: PayslipFile,
-    subject: string = 'Holerite',
-    messageTemplate: string = 'Olá {{nome}}, segue seu holerite da {{unidade}}.'
-  ): Promise<{ processed: number; failed: number; total: number }> {
-    const colaboradores = await this.colaboradorRepository.findByUnidade(unidade);
+    file: { filename: string; buffer: Buffer },
+    subject?: string,
+    message?: string
+  ): Promise<ProcessResult> {
+    const result: ProcessResult = {
+      processed: 0,
+      sent: 0,
+      failed: 0,
+      details: [],
+    };
 
-    if (colaboradores.length === 0) {
-      throw new Error(`Nenhum colaborador encontrado na unidade "${unidade}"`);
-    }
+    try {
+      console.log(`📄 Processando arquivo: ${file.filename}`);
+      console.log(`🏢 Unidade: ${unidade}`);
 
-    let processed = 0;
-    let failed = 0;
+      // 1. Separar holerites do PDF
+      const payslips = await this.pdfSplitter.split(file.buffer);
+      result.processed = payslips.length;
 
-    for (const colab of colaboradores) {
-      const personalizedMessage = messageTemplate
-        .replace(/\{\{\s*nome\s*\}\}/gi, colab.nome)
-        .replace(/\{\{\s*unidade\s*\}\}/gi, colab.unidade);
+      console.log(`✅ ${payslips.length} holerites encontrados`);
 
-      try {
-        await this.emailService.sendWithAttachments(
-          colab.email,
-          subject,
-          personalizedMessage,
-          [
-            {
-              filename: file.filename,
-              content: file.buffer,
-            },
-          ]
-        );
-        processed++;
-      } catch (error) {
-        console.error(`Erro ao enviar para ${colab.email}:`, error);
-        failed++;
+      // 2. Processar cada holerite
+      for (const payslip of payslips) {
+        try {
+          console.log(`\n🔍 Processando: CPF ${payslip.cpf} | Nome: ${payslip.nome || 'N/A'}`);
+
+          // Validar se o nome foi extraído
+          if (!payslip.nome) {
+            result.failed++;
+            result.details.push({
+              cpf: payslip.cpf,
+              nome: null,
+              status: 'failed',
+              error: 'Nome não encontrado no PDF',
+            });
+            console.log(`❌ Nome não encontrado no PDF`);
+            continue;
+          }
+
+          // 3. Buscar funcionário no banco por NOME e UNIDADE
+          const employee = await this.employeeRepository.findByNameAndUnit(
+            payslip.nome,
+            unidade
+          );
+
+          if (!employee) {
+            result.failed++;
+            result.details.push({
+              cpf: payslip.cpf,
+              nome: payslip.nome,
+              status: 'not_found',
+              error: `Funcionário '${payslip.nome}' não encontrado na unidade ${unidade}`,
+            });
+            console.log(`❌ Funcionário não encontrado no banco de dados`);
+            continue;
+          }
+
+          console.log(`✅ Funcionário encontrado: ${employee.email}`);
+
+          // 4. Enviar email
+          const emailSubject = subject || 'Seu Holerite';
+          const emailMessage = message || 'Segue em anexo seu holerite mensal.';
+
+          await this.emailService.sendPayslip(
+            employee.email,
+            employee.nome,
+            payslip.pdfBuffer,
+            emailSubject,
+            emailMessage
+          );
+
+          result.sent++;
+          result.details.push({
+            cpf: payslip.cpf,
+            nome: payslip.nome,
+            email: employee.email,
+            status: 'sent',
+          });
+
+          console.log(`✅ Email enviado para ${employee.email}`);
+
+        } catch (error: any) {
+          result.failed++;
+          result.details.push({
+            cpf: payslip.cpf,
+            nome: payslip.nome || null,
+            status: 'failed',
+            error: error.message,
+          });
+          console.error(`❌ Erro ao processar holerite:`, error.message);
+        }
       }
+
+      console.log(`\n📊 Resumo:`);
+      console.log(`   Processados: ${result.processed}`);
+      console.log(`   Enviados: ${result.sent}`);
+      console.log(`   Falhas: ${result.failed}`);
+
+    } catch (error: any) {
+      console.error('❌ Erro ao processar arquivo:', error);
+      throw new Error(`Erro ao processar holerites: ${error.message}`);
     }
 
-    return { processed, failed, total: colaboradores.length };
+    return result;
   }
 }

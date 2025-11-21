@@ -6,6 +6,7 @@ export interface ColaboradorRepository {
   create(colaborador: ColaboradorDTO): Promise<Colaborador>;
   findById(id: string): Promise<Colaborador | null>;
   findByEmail(email: string): Promise<Colaborador | null>;
+  findByNome(nome: string, unidade: string): Promise<Colaborador | null>; // ← NOVO
   findByUnidade(unidade: string): Promise<Colaborador[]>;
   findAll(): Promise<Colaborador[]>;
   update(id: string, data: Partial<Colaborador>): Promise<Colaborador>;
