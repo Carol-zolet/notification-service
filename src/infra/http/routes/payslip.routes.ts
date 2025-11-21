@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import multer from 'multer';
+import * as multer from 'multer';
 import { PayslipController } from '../controllers/payslip.controller';
 import { ProcessPayslipUseCase } from '../../../application/use-cases/process-payslip.use-case';
 import { PdfSplitterService } from '../../../application/services/pdf-splitter.service';
@@ -34,10 +34,26 @@ const payslipController = new PayslipController(processPayslipUseCase);
 
 const router = Router();
 
+
 router.post(
   '/process',
   upload.single('file'),
-  (req, res) => payslipController.process(req, res)
+  (req, res) => {
+    payslipController.process(req, res);
+  }
+);
+
+// Nova rota: processamento individualizado por nome
+router.post(
+  '/process/split',
+  upload.single('file'),
+  async (req, res) => {
+    try {
+      await payslipController.process(req, res);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Erro ao processar holerites individualizados' });
+    }
+  }
 );
 
 router.get('/health', (req, res) => {

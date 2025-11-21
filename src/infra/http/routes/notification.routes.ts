@@ -1,6 +1,5 @@
 import { Router } from "express";
-import multer from "multer";
-import { PrismaClient } from "@prisma/client";
+import * as multer from "multer";
 import { NodemailerService } from "../../services/nodemailer.service";
 import { MockEmailService } from "../../services/mock-email.service";
 

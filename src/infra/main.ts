@@ -1,4 +1,4 @@
-import express from 'express';
+import express = require('express');
 import payslipRoutes from './http/routes/payslip.routes';
 
 const app = express();

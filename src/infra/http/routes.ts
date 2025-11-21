@@ -1,5 +1,5 @@
 ﻿import { Router } from "express";
-import multer from "multer";
+import * as multer from "multer";
 import { PrismaClient } from "@prisma/client";
 import { NodemailerService } from "../services/nodemailer.service";
 import { MockEmailService } from "../services/mock-email.service";
@@ -525,7 +525,7 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
     // Processar cada colaborador
     for (const col of colaboradores) {
       try {
-        // TODO: Aqui vocÃª pode adicionar logica de envio de email
+        // TODO: Aqui você pode adicionar lógica de envio de email
         // Por enquanto, apenas simulamos o envio
         console.log(`[PAYSLIP] Enviando para ${col.nome} (${col.email})`);
         processed++;

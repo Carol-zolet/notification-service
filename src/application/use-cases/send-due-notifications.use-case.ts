@@ -1,5 +1,4 @@
 // src/application/use-cases/send-due-notifications.use-case.ts
-import { PrismaClient } from "@prisma/client";
 
 interface EmailService {
   send?(to: string, subject: string, body: string): Promise<any>;
