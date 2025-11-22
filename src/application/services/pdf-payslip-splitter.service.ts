@@ -1,5 +1,3 @@
-
-import * as pdfParse from 'pdf-parse';
 import { PDFDocument } from 'pdf-lib';
 
 interface Employee {
@@ -14,6 +12,18 @@ interface PayslipPosition {
 }
 
 export class PdfPayslipSplitterService {
+  private pdfjsLib: any;
+
+  constructor() {
+    // Importação dinâmica do pdfjs-dist
+    try {
+      this.pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
+      console.log('[PDF Splitter] ✓ pdfjs-dist carregado com sucesso');
+    } catch (error) {
+      console.error('[PDF Splitter] ❌ Erro ao carregar pdfjs-dist:', error);
+      throw new Error('pdfjs-dist não está instalado');
+    }
+  }
   async splitPayslipPdf(pdfBuffer: Buffer, employees: Employee[]): Promise<Map<string, Buffer>> {
     const result = new Map<string, Buffer>();
 
@@ -78,32 +88,39 @@ export class PdfPayslipSplitterService {
   }
 
   /**
-   * Extrai texto da página inteira
+   * Extrai texto da página usando pdfjs-dist
    */
   private async extractTextFromPage(buffer: Buffer, pageIndex: number): Promise<string> {
     try {
+      // Criar um PDF temporário com apenas a página desejada
       const pdfDoc = await PDFDocument.load(buffer);
       const newPdf = await PDFDocument.create();
       const [page] = await newPdf.copyPages(pdfDoc, [pageIndex]);
       newPdf.addPage(page);
       
-          const pdfBytes = await newPdf.save();
-          // Fallback dinâmico para máxima compatibilidade
-          let parsePdf: any = pdfParse;
-          if (typeof parsePdf !== 'function' && parsePdf.default) {
-            parsePdf = parsePdf.default;
-          }
-          if (typeof parsePdf !== 'function') {
-            try {
-              parsePdf = require('pdf-parse');
-            } catch (e) {
-              throw new Error('pdf-parse não pôde ser importado como função. Verifique a instalação.');
-            }
-          }
-          const data = await parsePdf(Buffer.from(pdfBytes));
-          return data.text || '';
+      const pdfBytes = await newPdf.save();
+      
+      // Usar pdfjs-dist para extrair o texto
+      const loadingTask = this.pdfjsLib.getDocument({
+        data: new Uint8Array(pdfBytes),
+        useSystemFonts: true,
+        standardFontDataUrl: null,
+      });
+      
+      const pdfDocument = await loadingTask.promise;
+      const page1 = await pdfDocument.getPage(1);
+      const textContent = await page1.getTextContent();
+      
+      // Extrair todo o texto
+      const text = textContent.items
+        .map((item: any) => item.str)
+        .join(' ');
+      
+      console.log(`[PDF Splitter] Texto extraído da página ${pageIndex + 1}: ${text.length} caracteres`);
+      
+      return text;
     } catch (error: any) {
-      console.error(`[PDF Splitter] Erro ao extrair texto da página ${pageIndex}:`, error);
+      console.error(`[PDF Splitter] Erro ao extrair texto da página ${pageIndex}:`, error.message);
       return '';
     }
   }
@@ -114,21 +131,17 @@ export class PdfPayslipSplitterService {
   private findTwoEmployeeNames(pageText: string, employees: Employee[]): PayslipPosition[] {
     const result: PayslipPosition[] = [];
     
-    // Dividir o texto em linhas
-    const lines = pageText.split('\n');
-    const totalLines = lines.length;
-    
-    if (totalLines < 10) {
+    if (!pageText || pageText.length < 50) {
       console.log('[PDF Splitter] ⚠ Texto muito curto, pulando divisão');
       return result;
     }
     
-    // Dividir em duas partes (superior e inferior)
-    const midPoint = Math.floor(totalLines / 2);
-    const topHalf = lines.slice(0, midPoint).join('\n');
-    const bottomHalf = lines.slice(midPoint).join('\n');
+    // Dividir o texto ao meio (aproximadamente)
+    const midPoint = Math.floor(pageText.length / 2);
+    const topHalf = pageText.substring(0, midPoint);
+    const bottomHalf = pageText.substring(midPoint);
     
-    console.log(`[PDF Splitter] Dividindo página em 2 partes: ${midPoint} linhas cada`);
+    console.log(`[PDF Splitter] Dividindo texto: ${topHalf.length} chars (top) + ${bottomHalf.length} chars (bottom)`);
     
     // Buscar nome na metade superior
     const topName = this.findEmployeeName(topHalf, employees);
@@ -222,8 +235,8 @@ export class PdfPayslipSplitterService {
     return text
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[ -]/g, '') // Remove acentos
-      .replace(/[^ -]/g, ' ') // Remove pontuação
+      .replace(/[\u0300-\u036F]/g, '') // Remove acentos
+      .replace(/[^\w\s]/g, ' ') // Remove pontuação
       .replace(/\s+/g, ' ') // Normaliza espaços
       .trim();
   }
