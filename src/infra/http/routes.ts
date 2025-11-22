@@ -493,10 +493,10 @@ router.delete('/admin/colaboradores/:id', async (req, res) => {
 // PAYSLIPS ENDPOINT
 // ==========================================
 
-// POST /api/v1/payslips/distribuir
+// POST /api/v1/payslips/distribuir - OTIMIZADO
 router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) => {
   try {
-    const { unidade, subject, message } = req.body;
+    const { unidade, subject, message, batchSize = '3', delayMs = '1000' } = req.body;
     const pdfBuffer = req.file?.buffer;
 
     if (!pdfBuffer || !unidade) {
@@ -519,21 +519,68 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
       });
     }
 
+    console.log(`[PAYSLIP] Iniciando envio para ${colaboradores.length} colaboradores de ${unidade}`);
+
     let processed = 0;
     let failed = 0;
+    const errors: Array<{ email: string; error: string }> = [];
 
-    // Processar cada colaborador
-    for (const col of colaboradores) {
-      try {
-        // TODO: Aqui você pode adicionar lógica de envio de email
-        // Por enquanto, apenas simulamos o envio
-        console.log(`[PAYSLIP] Enviando para ${col.nome} (${col.email})`);
-        processed++;
-      } catch (error) {
-        console.error(`Erro ao enviar para ${col.email}:`, error);
-        failed++;
+    // Configurações de lote
+    const batch = Math.max(1, Math.min(Number(batchSize), 10)); // Entre 1 e 10
+    const delay = Math.max(500, Math.min(Number(delayMs), 5000)); // Entre 500ms e 5s
+
+    // Processar em lotes
+    for (let i = 0; i < colaboradores.length; i += batch) {
+      const lote = colaboradores.slice(i, i + batch);
+      const loteNum = Math.floor(i / batch) + 1;
+      const totalLotes = Math.ceil(colaboradores.length / batch);
+
+      console.log(`[PAYSLIP] Processando lote ${loteNum}/${totalLotes} (${lote.length} emails)`);
+
+      // Enviar lote em paralelo
+      const results = await Promise.allSettled(
+        lote.map(async (col) => {
+          try {
+            const emailSubject = subject || "Holerite";
+            const emailMessage = message || `Olá ${col.nome}, segue holerite de ${col.unidade}.`;
+
+            await emailService.sendWithAttachments(
+              col.email,
+              emailSubject,
+              emailMessage,
+              [{ filename: "holerite.pdf", content: pdfBuffer }]
+            );
+
+            console.log(`[PAYSLIP] ✅ SUCESSO: ${col.nome} (${col.email})`);
+            return { success: true, email: col.email };
+          } catch (error: any) {
+            console.error(`[PAYSLIP] ❌ ERRO: ${col.email} - ${error.message}`);
+            throw error;
+          }
+        })
+      );
+
+      // Contar sucessos e falhas
+      results.forEach((result, idx) => {
+        if (result.status === 'fulfilled') {
+          processed++;
+        } else {
+          failed++;
+          errors.push({
+            email: lote[idx].email,
+            error: result.reason?.message || 'Erro desconhecido'
+          });
+        }
+      });
+
+      // Aguardar antes do próximo lote (exceto no último)
+      if (i + batch < colaboradores.length) {
+        console.log(`[PAYSLIP] Aguardando ${delay}ms antes do próximo lote...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
+
+    console.log(`[PAYSLIP] Concluído: ${processed} sucessos, ${failed} falhas de ${colaboradores.length} total`);
 
     return res.status(200).json({
       success: true,
@@ -542,12 +589,14 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
       failed,
       total: colaboradores.length,
       unidade: unidade,
+      errors: errors.length > 0 ? errors : undefined,
     });
-  } catch (error) {
-    console.error('Erro ao distribuir holerites:', error);
+  } catch (error: any) {
+    console.error('[PAYSLIP] ERRO CRÍTICO:', error);
     return res.status(500).json({
       success: false,
       message: 'Erro ao distribuir holerites',
+      error: error.message,
     });
   }
 });
