@@ -176,71 +176,142 @@ export class PdfPayslipSplitterService {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-      .replace(/[^a-z\s]/g, '') // Remove caracteres especiais
-      .trim();
-  }
+      import * as pdfParse from 'pdf-parse';
+      import { PDFDocument } from 'pdf-lib';
 
-  private calculateSimilarity(str1: string, str2: string): number {
-    const longer = str1.length > str2.length ? str1 : str2;
-    const shorter = str1.length > str2.length ? str2 : str1;
-    if (longer.length === 0) return 1.0;
-    const editDistance = this.levenshteinDistance(longer, shorter);
-    return (longer.length - editDistance) / longer.length;
-  }
+      interface Employee {
+        nome: string;
+        email: string;
+        unidade: string;
+      }
 
-  private levenshteinDistance(str1: string, str2: string): number {
-    const matrix: number[][] = [];
-    for (let i = 0; i <= str2.length; i++) {
-      matrix[i] = [i];
-    }
-    for (let j = 0; j <= str1.length; j++) {
-      matrix[0][j] = j;
-    }
-    for (let i = 1; i <= str2.length; i++) {
-      for (let j = 1; j <= str1.length; j++) {
-        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-          matrix[i][j] = matrix[i - 1][j - 1];
-        } else {
-          matrix[i][j] = Math.min(
-            matrix[i - 1][j - 1] + 1,
-            matrix[i][j - 1] + 1,
-            matrix[i - 1][j] + 1
-          );
+      export class PdfPayslipSplitterService {
+        /**
+         * Divide um PDF com múltiplos holerites em arquivos individuais
+         */
+        async splitPayslipPdf(
+          pdfBuffer: Buffer,
+          employees: Employee[]
+        ): Promise<Map<string, Buffer>> {
+          const result = new Map<string, Buffer>();
+
+          try {
+            console.log('[PDF Splitter] Iniciando divisão do PDF');
+      
+            const pdfDoc = await PDFDocument.load(pdfBuffer);
+            const totalPages = pdfDoc.getPageCount();
+      
+            console.log(`[PDF Splitter] Total de páginas: ${totalPages}`);
+            console.log(`[PDF Splitter] Colaboradores na unidade: ${employees.length}`);
+
+            // Tentar detectar nomes nas páginas
+            const pageNames: string[] = [];
+      
+            for (let i = 0; i < totalPages; i++) {
+              console.log(`[PDF Splitter] Processando página ${i + 1}/${totalPages}`);
+        
+              const pageText = await this.extractTextFromPage(pdfBuffer, i);
+              const foundName = this.findEmployeeName(pageText, employees);
+        
+              if (foundName) {
+                pageNames.push(foundName);
+                console.log(`[PDF Splitter] Nome encontrado na página ${i + 1}: ${foundName}`);
+              } else {
+                console.log(`[PDF Splitter] Nome não encontrado na página ${i + 1}`);
+                pageNames.push(''); // Marca página sem nome identificado
+              }
+            }
+
+            // Criar PDFs individuais
+            for (let i = 0; i < totalPages; i++) {
+              const employeeName = pageNames[i];
+        
+              if (!employeeName) {
+                console.log(`[PDF Splitter] Pulando página ${i + 1} - sem nome identificado`);
+                continue;
+              }
+
+              try {
+                const newPdf = await PDFDocument.create();
+                const [page] = await newPdf.copyPages(pdfDoc, [i]);
+                newPdf.addPage(page);
+          
+                const pdfBytes = await newPdf.save();
+                result.set(employeeName, Buffer.from(pdfBytes));
+          
+                console.log(`[PDF Splitter] ✅ PDF criado para: ${employeeName}`);
+              } catch (error: any) {
+                console.error(`[PDF Splitter] Erro ao criar PDF para ${employeeName}:`, error.message);
+              }
+            }
+
+            console.log(`[PDF Splitter] Concluído: ${result.size} PDFs individuais criados`);
+            return result;
+
+          } catch (error: any) {
+            console.error('[PDF Splitter] Erro ao processar PDF:', error);
+            throw new Error(`Falha ao dividir PDF: ${error.message}`);
+          }
+        }
+
+        /**
+         * Extrai texto de uma página específica do PDF
+         */
+        private async extractTextFromPage(buffer: Buffer, pageIndex: number): Promise<string> {
+          try {
+            const pdfDoc = await PDFDocument.load(buffer);
+            const newPdf = await PDFDocument.create();
+            const [page] = await newPdf.copyPages(pdfDoc, [pageIndex]);
+            newPdf.addPage(page);
+      
+            const pdfBytes = await newPdf.save();
+      
+            // CORREÇÃO: Usar pdfParse corretamente
+            const data = await (pdfParse as any)(Buffer.from(pdfBytes));
+      
+            return data.text;
+          } catch (error: any) {
+            console.error(`[PDF Splitter] Erro ao extrair texto da página ${pageIndex}:`, error);
+            return '';
+          }
+        }
+
+        /**
+         * Busca o nome do colaborador no texto da página
+         */
+        private findEmployeeName(pageText: string, employees: Employee[]): string | null {
+          const normalizedText = this.normalizeText(pageText);
+    
+          for (const employee of employees) {
+            const normalizedName = this.normalizeText(employee.nome);
+      
+            // Buscar nome completo
+            if (normalizedText.includes(normalizedName)) {
+              return employee.nome;
+            }
+      
+            // Buscar partes significativas do nome (sobrenome)
+            const nameParts = normalizedName.split(' ').filter(part => part.length > 3);
+            for (const part of nameParts) {
+              if (normalizedText.includes(part)) {
+                return employee.nome;
+              }
+            }
+          }
+    
+          return null;
+        }
+
+        /**
+         * Normaliza texto para comparação (remove acentos, converte para minúsculas)
+         */
+        private normalizeText(text: string): string {
+          return text
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+            .replace(/[^\w\s]/g, ' ') // Remove pontuação
+            .replace(/\s+/g, ' ') // Normaliza espaços
+            .trim();
         }
       }
-    }
-    return matrix[str2.length][str1.length];
-  }
-
-
-  /**
-   * Cria PDF individual a partir de uma metade da página
-   */
-  private async createIndividualPdf(
-    originalPdf: PDFDocument,
-    pageIndex: number,
-    splitIndex: number,
-    isOnlyOne: boolean
-  ): Promise<Buffer> {
-    const newPdf = await PDFDocument.create();
-    const [page] = await newPdf.copyPages(originalPdf, [pageIndex]);
-    
-    const { height } = page.getSize();
-    
-    if (!isOnlyOne) {
-      // Dividir página ao meio
-      if (splitIndex === 0) {
-        // Metade superior - cortar a parte de baixo
-        page.setCropBox(0, height / 2, page.getWidth(), height);
-      } else {
-        // Metade inferior - cortar a parte de cima
-        page.setCropBox(0, 0, page.getWidth(), height / 2);
-      }
-    }
-    
-    newPdf.addPage(page);
-    
-    const pdfBytes = await newPdf.save();
-    return Buffer.from(pdfBytes);
-  }
-}
