@@ -3,10 +3,15 @@ import multer from "multer";
 import { PrismaClient } from "@prisma/client";
 import { NodemailerService } from "../services/nodemailer.service";
 import { MockEmailService } from "../services/mock-email.service";
+import { BrevoEmailService } from "../services/brevo.service";
 
 export const router = Router();
 const prisma = new PrismaClient();
-const emailService = process.env.SMTP_HOST ? new NodemailerService() : new MockEmailService();
+const emailService = process.env.BREVO_API_KEY
+  ? new BrevoEmailService(process.env.BREVO_API_KEY!, process.env.BREVO_SENDER!)
+  : (process.env.SMTP_HOST
+      ? new NodemailerService()
+      : new MockEmailService());
 
 // Fallback/simple implementation for ReprocessFailedNotificationsUseCase when the real use case isn't available.
 // Replace this with an import of the real implementation when it exists.
@@ -257,7 +262,8 @@ router.post("/payslips/process", upload.single("pdfFile"), async (req, res) => {
 
     const buffer = req.file.buffer;
     const filename = req.file.originalname || "holerite.pdf";
-    const bs = Math.max(1, Math.min(Number(batchSize || 20), 100));
+    // Reduzir tamanho do lote para 2
+    const bs = Math.max(1, Math.min(Number(batchSize || 2), 2));
     let processed = 0;
     let failed = 0;
 
@@ -282,6 +288,11 @@ router.post("/payslips/process", upload.single("pdfFile"), async (req, res) => {
       );
       processed += results.filter((r) => r.ok).length;
       failed += results.filter((r) => !r.ok).length;
+      // Aumentar tempo entre lotes para 3000ms
+      if (i + bs < colaboradores.length) {
+        console.log(`[PAYSLIP] Aguardando 3000ms antes do próximo lote...`);
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
     }
 
     // Histórico (tabela SendHistory se existir)
