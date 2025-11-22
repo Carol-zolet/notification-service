@@ -208,6 +208,7 @@ function renderTemplate(tpl: string, ctx: { nome: string; unidade: string }) {
     .replace(/{{\s*unidade\s*}}/gi, ctx.unidade ?? "");
 }
 
+
 router.post("/payslips/process", upload.single("pdfFile"), async (req, res) => {
   try {
     const {
@@ -224,8 +225,11 @@ router.post("/payslips/process", upload.single("pdfFile"), async (req, res) => {
       return res.status(400).json({ error: "Parâmetro 'unidade' obrigatório (exceto testRecipient)" });
     }
 
-    let colaboradores: Array<{ nome: string; email: string; unidade: string }> = [];
+    if (!req.file?.buffer) {
+      return res.status(400).json({ error: "Arquivo não enviado" });
+    }
 
+    let colaboradores: Array<{ nome: string; email: string; unidade: string }> = [];
     if (testRecipient) {
       colaboradores = [{ nome: "Teste", email: testRecipient, unidade: unidade || "Teste" }];
     } else {
@@ -260,13 +264,16 @@ router.post("/payslips/process", upload.single("pdfFile"), async (req, res) => {
       });
     }
 
-    if (!req.file?.buffer) {
-      return res.status(400).json({ error: "Arquivo não enviado" });
+    const buffer = req.file.buffer;
+
+    // Dividir o PDF por colaborador
+    const splitterService = new PdfPayslipSplitterService();
+    const splitPdfs = await splitterService.splitPayslipsByEmployee(buffer, colaboradores);
+
+    if (splitPdfs.size === 0) {
+      return res.status(400).json({ error: "Não foi possível extrair holerites individuais do PDF" });
     }
 
-    const buffer = req.file.buffer;
-    const filename = req.file.originalname || "holerite.pdf";
-    // Reduzir tamanho do lote para 2
     const bs = Math.max(1, Math.min(Number(batchSize || 2), 2));
     let processed = 0;
     let failed = 0;
@@ -276,36 +283,44 @@ router.post("/payslips/process", upload.single("pdfFile"), async (req, res) => {
       const results = await Promise.all(
         lote.map(async (c) => {
           try {
+            // Pega o PDF específico do colaborador
+            const employeePdf = splitPdfs.get(c.nome);
+            if (!employeePdf) {
+              console.warn(`[PAYSLIP] Holerite não encontrado para ${c.nome}`);
+              return { ok: false, error: "PDF não encontrado" };
+            }
+
             const subjectRendered = renderTemplate(subject, { nome: c.nome, unidade: c.unidade });
             const messageRendered = renderTemplate(message, { nome: c.nome, unidade: c.unidade });
+
             await emailService.sendWithAttachments(
-              c.email,  // to
-              subjectRendered,    // subject
-              messageRendered,    // body
-              [{ filename, content: buffer }]  // attachments
+              c.email,
+              subjectRendered,
+              messageRendered,
+              [{ filename: `holerite_${c.nome}.pdf`, content: employeePdf }]
             );
             return { ok: true };
           } catch (e: any) {
+            console.error(`[PAYSLIP] Erro ao enviar para ${c.email}:`, e.message);
             return { ok: false, error: e.message };
           }
         })
       );
       processed += results.filter((r) => r.ok).length;
       failed += results.filter((r) => !r.ok).length;
-      // Aumentar tempo entre lotes para 3000ms
       if (i + bs < colaboradores.length) {
         console.log(`[PAYSLIP] Aguardando 3000ms antes do próximo lote...`);
         await new Promise((resolve) => setTimeout(resolve, 3000));
       }
     }
 
-    // Histórico (tabela SendHistory se existir)
+    // Histórico
     try {
       await prisma.sendHistory.create({
         data: {
           unidade,
           subject,
-          total,             // ← em vez de totalRecipients
+          total,
           dryRun: String(dryRun).toLowerCase() === "true",
           testRecipient: testRecipient ?? null,
         },
@@ -321,6 +336,7 @@ router.post("/payslips/process", upload.single("pdfFile"), async (req, res) => {
       unidade: unidade || "Teste",
     });
   } catch (err: any) {
+    console.error("[PAYSLIP] Erro:", err);
     res.status(500).json({ error: err.message || "Erro interno" });
   }
 });

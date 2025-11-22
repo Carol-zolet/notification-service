@@ -13,6 +13,20 @@ interface SplitResult {
 }
 
 export class PdfPayslipSplitterService {
+    /**
+     * Divide o PDF e retorna um Map com nome do colaborador e Buffer do PDF individual
+     */
+    async splitPayslipsByEmployee(
+      pdfBuffer: Buffer,
+      colaboradores: Colaborador[]
+    ): Promise<Map<string, Buffer>> {
+      const results = await this.splitPayslipPdf(pdfBuffer, colaboradores);
+      const map = new Map<string, Buffer>();
+      for (const result of results) {
+        map.set(result.colaborador.nome, result.pdfBuffer);
+      }
+      return map;
+    }
   /**
    * Divide um PDF com múltiplos holerites (2 por página) em PDFs individuais
    */
@@ -90,23 +104,14 @@ export class PdfPayslipSplitterService {
    */
   private async extractTextFromPage(pdfBuffer: Buffer, pageIndex: number): Promise<string> {
     try {
-      const data = await (pdfParse.default ? pdfParse.default(pdfBuffer, {
+      const data = await (pdfParse as any)(pdfBuffer, {
         pagerender: (pageData: any) => {
-          // Filtrar apenas a página desejada
           if (pageData.pageIndex === pageIndex) {
             return pageData.getTextContent();
           }
           return null;
         }
-      }) : pdfParse(pdfBuffer, {
-        pagerender: (pageData: any) => {
-          // Filtrar apenas a página desejada
-          if (pageData.pageIndex === pageIndex) {
-            return pageData.getTextContent();
-          }
-          return null;
-        }
-      }));
+      });
       return data.text || '';
     } catch (error) {
       console.error(`[PDF Splitter] Erro ao extrair texto da página ${pageIndex}:`, error);
