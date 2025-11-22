@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { NodemailerService } from "../services/nodemailer.service";
 import { MockEmailService } from "../services/mock-email.service";
 import { BrevoApiService } from "../../application/services/brevo-api-email.service";
+import { PdfPayslipSplitterService } from '../../application/services/pdf-payslip-splitter.service';
 
 export const router = Router();
 const prisma = new PrismaClient();
@@ -507,22 +508,32 @@ router.delete('/admin/colaboradores/:id', async (req, res) => {
 // PAYSLIPS ENDPOINT
 // ==========================================
 
-// POST /api/v1/payslips/distribuir - OTIMIZADO
+// POST /api/v1/payslips/distribuir - COM DIVISÃO AUTOMÁTICA
 router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) => {
   try {
-    const { unidade, subject, message, batchSize = '3', delayMs = '1000' } = req.body;
+    const { 
+      unidade, 
+      subject = 'Holerite', 
+      message = 'Olá {{nome}}, segue seu holerite de {{unidade}}.', 
+      batchSize = '2', 
+      delayMs = '3000',
+      testEmail // Email de teste (envia apenas para este email)
+    } = req.body;
+
     const pdfBuffer = req.file?.buffer;
 
     if (!pdfBuffer || !unidade) {
       return res.status(400).json({
         success: false,
-        message: 'PDF e unidade sao obrigatorios',
+        message: 'PDF e unidade são obrigatórios',
       });
     }
 
+    console.log(`[PAYSLIP] Iniciando processamento para unidade: ${unidade}`);
+
     // Buscar colaboradores da unidade
     const colaboradores = await prisma.colaborador.findMany({
-      where: { unidade: unidade },
+      where: { unidade },
       select: { id: true, nome: true, email: true, unidade: true },
     });
 
@@ -533,42 +544,77 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
       });
     }
 
-    console.log(`[PAYSLIP] Iniciando envio para ${colaboradores.length} colaboradores de ${unidade}`);
+    console.log(`[PAYSLIP] ${colaboradores.length} colaboradores encontrados`);
+
+    // Dividir PDF em holerites individuais
+    const splitter = new PdfPayslipSplitterService();
+    let splitResults;
+
+    try {
+      splitResults = await splitter.splitPayslipPdf(pdfBuffer, colaboradores);
+      console.log(`[PAYSLIP] PDF dividido em ${splitResults.length} holerites individuais`);
+    } catch (error: any) {
+      console.error('[PAYSLIP] Erro ao dividir PDF:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro ao processar PDF',
+        error: error.message,
+      });
+    }
+
+    if (splitResults.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nenhum holerite pôde ser extraído do PDF. Verifique se os nomes dos colaboradores estão corretos.',
+      });
+    }
+
+    // Se testEmail foi fornecido, enviar todos para esse email
+    if (testEmail) {
+      console.log(`[PAYSLIP] MODO TESTE: Enviando todos os holerites para ${testEmail}`);
+      splitResults = splitResults.map(result => ({
+        ...result,
+        colaborador: {
+          ...result.colaborador,
+          email: testEmail,
+        },
+      }));
+    }
 
     let processed = 0;
     let failed = 0;
-    const errors: Array<{ email: string; error: string }> = [];
+    const errors: Array<{ nome: string; email: string; error: string }> = [];
 
     // Configurações de lote
-    const batch = Math.max(1, Math.min(Number(batchSize), 10)); // Entre 1 e 10
-    const delay = Math.max(500, Math.min(Number(delayMs), 5000)); // Entre 500ms e 5s
+    const batch = Math.max(1, Math.min(Number(batchSize), 5));
+    const delay = Math.max(1000, Math.min(Number(delayMs), 5000));
 
     // Processar em lotes
-    for (let i = 0; i < colaboradores.length; i += batch) {
-      const lote = colaboradores.slice(i, i + batch);
+    for (let i = 0; i < splitResults.length; i += batch) {
+      const lote = splitResults.slice(i, i + batch);
       const loteNum = Math.floor(i / batch) + 1;
-      const totalLotes = Math.ceil(colaboradores.length / batch);
+      const totalLotes = Math.ceil(splitResults.length / batch);
 
       console.log(`[PAYSLIP] Processando lote ${loteNum}/${totalLotes} (${lote.length} emails)`);
 
       // Enviar lote em paralelo
       const results = await Promise.allSettled(
-        lote.map(async (col) => {
+        lote.map(async ({ colaborador, pdfBuffer }) => {
           try {
-            const emailSubject = subject || "Holerite";
-            const emailMessage = message || `Olá ${col.nome}, segue holerite de ${col.unidade}.`;
+            const emailSubject = subject.replace(/{{nome}}/gi, colaborador.nome).replace(/{{unidade}}/gi, colaborador.unidade);
+            const emailMessage = message.replace(/{{nome}}/gi, colaborador.nome).replace(/{{unidade}}/gi, colaborador.unidade);
 
             await emailService.sendWithAttachments(
-              col.email,
+              colaborador.email,
               emailSubject,
               emailMessage,
-              [{ filename: "holerite.pdf", content: pdfBuffer }]
+              [{ filename: `holerite_${colaborador.nome.replace(/\s+/g, '_')}.pdf`, content: pdfBuffer }]
             );
 
-            console.log(`[PAYSLIP] ✅ SUCESSO: ${col.nome} (${col.email})`);
-            return { success: true, email: col.email };
+            console.log(`[PAYSLIP] ✅ SUCESSO: ${colaborador.nome} (${colaborador.email})`);
+            return { success: true, email: colaborador.email };
           } catch (error: any) {
-            console.error(`[PAYSLIP] ❌ ERRO: ${col.email} - ${error.message}`);
+            console.error(`[PAYSLIP] ❌ ERRO: ${colaborador.email} - ${error.message}`);
             throw error;
           }
         })
@@ -581,28 +627,44 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
         } else {
           failed++;
           errors.push({
-            email: lote[idx].email,
+            nome: lote[idx].colaborador.nome,
+            email: lote[idx].colaborador.email,
             error: result.reason?.message || 'Erro desconhecido'
           });
         }
       });
 
       // Aguardar antes do próximo lote (exceto no último)
-      if (i + batch < colaboradores.length) {
+      if (i + batch < splitResults.length) {
         console.log(`[PAYSLIP] Aguardando ${delay}ms antes do próximo lote...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
 
-    console.log(`[PAYSLIP] Concluído: ${processed} sucessos, ${failed} falhas de ${colaboradores.length} total`);
+    console.log(`[PAYSLIP] Concluído: ${processed} sucessos, ${failed} falhas de ${splitResults.length} total`);
+
+    // Salvar no histórico
+    try {
+      await prisma.sendHistory.create({
+        data: {
+          unidade,
+          subject,
+          total: splitResults.length,
+          dryRun: false,
+          testRecipient: testEmail || null,
+        },
+      });
+    } catch (err) {
+      console.error('[PAYSLIP] Erro ao salvar histórico:', err);
+    }
 
     return res.status(200).json({
       success: true,
-      message: 'Holerites processados',
+      message: 'Holerites processados e enviados individualmente',
       processed,
       failed,
-      total: colaboradores.length,
-      unidade: unidade,
+      total: splitResults.length,
+      unidade,
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error: any) {
