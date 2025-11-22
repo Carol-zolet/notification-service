@@ -60,9 +60,9 @@ export function Payslip() {
 
   const fetchUnidades = async () => {
     try {
-      const res = await fetch(`${config.apiBaseUrl}/admin/unidades`);
+      const res = await fetch(`${config.apiBaseUrl}/unidades`);
       const data = await res.json();
-      setUnidades(data.map((u: any) => u.unidade).sort());
+      setUnidades(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Erro ao carregar unidades:', error);
     }
@@ -71,7 +71,7 @@ export function Payslip() {
   const fetchColaboradores = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${config.apiBaseUrl}/admin/colaboradores?unidade=${encodeURIComponent(unidade)}`);
+      const res = await fetch(`${config.apiBaseUrl}/colaboradores?unidade=${encodeURIComponent(unidade)}`);
       const data = await res.json();
       setTodosColaboradores(data);
       setColaboradoresFiltrados(data);

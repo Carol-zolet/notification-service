@@ -13,6 +13,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     { id: 'payslips', label: 'Enviar Holerites', icon: '📄' },
     { id: 'notifications', label: 'Notificações', icon: '🔔' },
     { id: 'history', label: 'Histórico', icon: '📋' },
+    { id: 'admin', label: 'Administração', icon: '⚙️' },
   ];
 
   return (

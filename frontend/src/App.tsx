@@ -5,6 +5,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Payslip } from './pages/Payslip';
 import { Notifications } from './pages/Notifications';
 import { History } from './pages/History';
+import AdminPanel from './pages/AdminPanel';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -19,6 +20,8 @@ function App() {
         return <Notifications />;
       case 'history':
         return <History />;
+      case 'admin':
+        return <AdminPanel />;
       default:
         return <Dashboard />;
     }

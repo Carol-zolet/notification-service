@@ -76,6 +76,8 @@ router.get("/health", (_req, res) => {
 });
 
 // Unidades
+
+// Listar todas as unidades
 router.get("/unidades", async (_req, res) => {
   const unidades = await prisma.colaborador.findMany({
     distinct: ["unidade"],
@@ -85,13 +87,114 @@ router.get("/unidades", async (_req, res) => {
   res.json(unidades.map((u) => u.unidade));
 });
 
+// Criar unidade
+router.post("/unidades", async (req, res) => {
+  const { unidade } = req.body;
+  if (!unidade) return res.status(400).json({ error: "Campo 'unidade' obrigatório" });
+  // Cria uma unidade fictícia (sem colaborador)
+  try {
+    // Verifica se já existe
+    const existe = await prisma.colaborador.findFirst({ where: { unidade } });
+    if (existe) return res.status(409).json({ error: "Unidade já existe" });
+    // Cria registro fictício
+    const nova = await prisma.colaborador.create({
+      data: { nome: "Unidade", email: `${unidade.toLowerCase().replace(/\s/g,'')}@fake.com`, unidade }
+    });
+    res.status(201).json({ unidade: nova.unidade });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Erro ao criar unidade" });
+  }
+});
+
+// Editar unidade (renomear)
+router.put("/unidades/:nomeAntigo", async (req, res) => {
+  const { nomeAntigo } = req.params;
+  const { unidade: novoNome } = req.body;
+  if (!novoNome) return res.status(400).json({ error: "Campo 'unidade' obrigatório" });
+  try {
+    const atualizados = await prisma.colaborador.updateMany({
+      where: { unidade: nomeAntigo },
+      data: { unidade: novoNome }
+    });
+    if (atualizados.count === 0) return res.status(404).json({ error: "Unidade não encontrada" });
+    res.json({ unidade: novoNome, atualizados: atualizados.count });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Erro ao atualizar unidade" });
+  }
+});
+
+// Excluir unidade
+router.delete("/unidades/:nome", async (req, res) => {
+  const { nome } = req.params;
+  try {
+    const excluidos = await prisma.colaborador.deleteMany({ where: { unidade: nome } });
+    if (excluidos.count === 0) return res.status(404).json({ error: "Unidade não encontrada" });
+    res.json({ message: "Unidade excluída com sucesso", excluidos: excluidos.count });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Erro ao excluir unidade" });
+  }
+});
+
 // Colaboradores
+
+// Listar todos
 router.get("/colaboradores", async (_req, res) => {
   const colabs = await prisma.colaborador.findMany({
     select: { id: true, nome: true, email: true, unidade: true, createdAt: true },
     orderBy: { unidade: "asc" },
   });
   res.json(colabs);
+});
+
+// Criar colaborador
+router.post("/colaboradores", async (req, res) => {
+  const { nome, email, unidade } = req.body;
+  if (!nome || !email || !unidade) {
+    return res.status(400).json({ error: "Campos obrigatórios: nome, email, unidade" });
+  }
+  try {
+    const novo = await prisma.colaborador.create({
+      data: { nome, email, unidade }
+    });
+    res.status(201).json(novo);
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: "Email já cadastrado" });
+    }
+    res.status(500).json({ error: error.message || "Erro ao criar colaborador" });
+  }
+});
+
+// Editar colaborador
+router.put("/colaboradores/:id", async (req, res) => {
+  const { id } = req.params;
+  const { nome, email, unidade } = req.body;
+  try {
+    const atualizado = await prisma.colaborador.update({
+      where: { id },
+      data: { nome, email, unidade }
+    });
+    res.json(atualizado);
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: "Colaborador não encontrado" });
+    }
+    res.status(500).json({ error: error.message || "Erro ao editar colaborador" });
+  }
+});
+
+// Excluir colaborador
+router.delete("/colaboradores/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.colaborador.delete({ where: { id } });
+    res.status(204).send();
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: "Colaborador não encontrado" });
+    }
+    res.status(500).json({ error: error.message || "Erro ao excluir colaborador" });
+  }
 });
 
 // Notificações (simples criar/listar)
