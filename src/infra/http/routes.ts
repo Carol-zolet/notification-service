@@ -138,12 +138,18 @@ router.delete("/unidades/:nome", async (req, res) => {
 // Colaboradores
 
 // Listar todos
-router.get("/colaboradores", async (_req, res) => {
-  const colabs = await prisma.colaborador.findMany({
-    select: { id: true, nome: true, email: true, unidade: true, createdAt: true },
-    orderBy: { unidade: "asc" },
-  });
-  res.json(colabs);
+router.get("/colaboradores", async (req, res) => {
+  const { unidade } = req.query;
+  try {
+    const colabs = await prisma.colaborador.findMany({
+      where: unidade ? { unidade: unidade as string } : undefined,
+      select: { id: true, nome: true, email: true, unidade: true, createdAt: true },
+      orderBy: { nome: "asc" },
+    });
+    res.json(colabs);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Erro ao buscar colaboradores" });
+  }
 });
 
 // Criar colaborador
