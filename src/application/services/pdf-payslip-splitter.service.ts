@@ -1,5 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
-import pdf from 'pdf-parse';
+import * as pdfParse from 'pdf-parse';
 
 interface Colaborador {
   nome: string;
@@ -90,7 +90,7 @@ export class PdfPayslipSplitterService {
    */
   private async extractTextFromPage(pdfBuffer: Buffer, pageIndex: number): Promise<string> {
     try {
-      const data = await pdf(pdfBuffer, {
+      const data = await (pdfParse.default ? pdfParse.default(pdfBuffer, {
         pagerender: (pageData: any) => {
           // Filtrar apenas a página desejada
           if (pageData.pageIndex === pageIndex) {
@@ -98,8 +98,15 @@ export class PdfPayslipSplitterService {
           }
           return null;
         }
-      });
-
+      }) : pdfParse(pdfBuffer, {
+        pagerender: (pageData: any) => {
+          // Filtrar apenas a página desejada
+          if (pageData.pageIndex === pageIndex) {
+            return pageData.getTextContent();
+          }
+          return null;
+        }
+      }));
       return data.text || '';
     } catch (error) {
       console.error(`[PDF Splitter] Erro ao extrair texto da página ${pageIndex}:`, error);
@@ -168,33 +175,22 @@ export class PdfPayslipSplitterService {
       .trim();
   }
 
-  /**
-   * Calcula similaridade entre duas strings (Levenshtein simplificado)
-   */
   private calculateSimilarity(str1: string, str2: string): number {
     const longer = str1.length > str2.length ? str1 : str2;
     const shorter = str1.length > str2.length ? str2 : str1;
-    
     if (longer.length === 0) return 1.0;
-    
     const editDistance = this.levenshteinDistance(longer, shorter);
     return (longer.length - editDistance) / longer.length;
   }
 
-  /**
-   * Calcula distância de Levenshtein
-   */
   private levenshteinDistance(str1: string, str2: string): number {
     const matrix: number[][] = [];
-
     for (let i = 0; i <= str2.length; i++) {
       matrix[i] = [i];
     }
-
     for (let j = 0; j <= str1.length; j++) {
       matrix[0][j] = j;
     }
-
     for (let i = 1; i <= str2.length; i++) {
       for (let j = 1; j <= str1.length; j++) {
         if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
@@ -208,9 +204,9 @@ export class PdfPayslipSplitterService {
         }
       }
     }
-
     return matrix[str2.length][str1.length];
   }
+
 
   /**
    * Cria PDF individual a partir de uma metade da página
