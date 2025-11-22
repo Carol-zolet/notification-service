@@ -1,6 +1,4 @@
-Perfeito! Vamos aplicar a Opção 1:
-Atualize o tsconfig.json na raiz do projeto:
-json{
+{
   "compilerOptions": {
     "target": "ES2020",
     "module": "commonjs",
@@ -19,9 +17,6 @@ json{
   "exclude": [
     "node_modules",
     "dist",
-    "frontend",
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "**/__tests__/**"
+    "frontend"
   ]
 }

@@ -268,7 +268,7 @@ router.post("/payslips/process", upload.single("pdfFile"), async (req, res) => {
 
     // Dividir o PDF por colaborador
     const splitterService = new PdfPayslipSplitterService();
-    const splitPdfs = await splitterService.splitPayslipsByEmployee(buffer, colaboradores);
+    const splitPdfs = await splitterService.splitPayslipPdf(buffer, colaboradores);
 
     if (splitPdfs.size === 0) {
       return res.status(400).json({ error: "Não foi possível extrair holerites individuais do PDF" });
@@ -563,12 +563,13 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
     console.log(`[PAYSLIP] ${colaboradores.length} colaboradores encontrados`);
 
     // Dividir PDF em holerites individuais
+
     const splitter = new PdfPayslipSplitterService();
-    let splitResults;
+    let splitResultsMap: Map<string, Buffer>;
 
     try {
-      splitResults = await splitter.splitPayslipPdf(pdfBuffer, colaboradores);
-      console.log(`[PAYSLIP] PDF dividido em ${splitResults.length} holerites individuais`);
+      splitResultsMap = await splitter.splitPayslipPdf(pdfBuffer, colaboradores);
+      console.log(`[PAYSLIP] PDF dividido em ${splitResultsMap.size} holerites individuais`);
     } catch (error: any) {
       console.error('[PAYSLIP] Erro ao dividir PDF:', error);
       return res.status(500).json({
@@ -578,23 +579,32 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
       });
     }
 
-    if (splitResults.length === 0) {
+    if (splitResultsMap.size === 0) {
       return res.status(400).json({
         success: false,
         message: 'Nenhum holerite pôde ser extraído do PDF. Verifique se os nomes dos colaboradores estão corretos.',
       });
     }
 
+    // Converter Map para Array de objetos
+    interface SplitResult {
+      colaborador: { id: string; nome: string; email: string; unidade: string };
+      pdfBuffer: Buffer;
+    }
+
+    const splitResults: SplitResult[] = Array.from(splitResultsMap.entries())
+      .map(([nome, pdfBuf]) => {
+        const colaborador = colaboradores.find(c => c.nome === nome);
+        if (!colaborador) return null;
+        return { colaborador, pdfBuffer: pdfBuf };
+      })
+      .filter((item): item is SplitResult => item !== null);
+
+    console.log(`[PAYSLIP] ${splitResults.length} holerites serão enviados`);
+
     // Se testEmail foi fornecido, enviar todos para esse email
     if (testEmail) {
       console.log(`[PAYSLIP] MODO TESTE: Enviando todos os holerites para ${testEmail}`);
-      splitResults = splitResults.map(result => ({
-        ...result,
-        colaborador: {
-          ...result.colaborador,
-          email: testEmail,
-        },
-      }));
     }
 
     let processed = 0;

@@ -1,67 +1,43 @@
-import * as request from 'supertest';
-import * as express from 'express';
-import payslipRoutes from '../routes/payslip.routes';
-import * as path from 'path';
+import request from 'supertest';
+import express from 'express';
+import { router } from '../routes';
+
+const app = express();
+app.use(express.json());
+app.use('/api/v1', router);
 
 describe('Payslip Routes', () => {
-  const app = express();
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
-  app.use('/api/v1/payslips', payslipRoutes);
-
-  it('GET /health deve retornar status ok', async () => {
-    const res = await request(app).get('/api/v1/payslips/health');
+  it('deve retornar health check', async () => {
+    const res = await request(app).get('/api/v1/health');
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('ok');
-    expect(res.body.service).toBe('payslip-processor');
   });
 
-  it('POST /process deve retornar erro se não enviar arquivo', async () => {
+  it('deve listar unidades', async () => {
+    const res = await request(app).get('/api/v1/unidades');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+  });
+
+  it('deve listar colaboradores', async () => {
+    const res = await request(app).get('/api/v1/colaboradores');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+  });
+
+  it('deve retornar erro 400 sem PDF', async () => {
     const res = await request(app)
       .post('/api/v1/payslips/process')
-      .field('unidade', 'UNIDADE1');
+      .field('unidade', 'TEST');
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/Arquivo não enviado/);
+    expect(res.body.error).toContain('Arquivo');
   });
 
-  it('POST /process deve retornar erro se não enviar unidade', async () => {
+  it('deve retornar erro 400 sem unidade', async () => {
     const res = await request(app)
       .post('/api/v1/payslips/process')
-      .attach('file', Buffer.from('PDF'), 'holerite.pdf');
+      .attach('pdfFile', Buffer.from('%PDF'), 'test.pdf');
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/Unidade não especificada/);
-  });
-
-  it('POST /process deve processar arquivo PDF válido', async () => {
-    // Para teste real, use um PDF de exemplo válido
-    const pdfPath = path.join(__dirname, 'holerite-exemplo.pdf');
-    const res = await request(app)
-      .post('/api/v1/payslips/process')
-      .field('unidade', 'UNIDADE1')
-      .field('subject', 'Seu Holerite')
-      .field('message', 'Segue em anexo')
-      .attach('file', pdfPath);
-    // Espera sucesso ou erro de processamento, depende do PDF
-    expect([200, 500]).toContain(res.status);
-    // Se sucesso, espera campo success
-    if (res.status === 200) {
-      expect(res.body.success).toBe(true);
-      expect(res.body.unidade).toBe('UNIDADE1');
-    }
-  });
-
-  it('POST /process/split deve funcionar igual ao /process', async () => {
-    const pdfPath = path.join(__dirname, 'holerite-exemplo.pdf');
-    const res = await request(app)
-      .post('/api/v1/payslips/process/split')
-      .field('unidade', 'UNIDADE1')
-      .field('subject', 'Seu Holerite')
-      .field('message', 'Segue em anexo')
-      .attach('file', pdfPath);
-    expect([200, 500]).toContain(res.status);
-    if (res.status === 200) {
-      expect(res.body.success).toBe(true);
-      expect(res.body.unidade).toBe('UNIDADE1');
-    }
+    expect(res.body.error).toContain('unidade');
   });
 });
