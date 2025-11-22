@@ -146,7 +146,7 @@
   // o servidor não faz proxy para o backend, então apontamos a URL
   // absoluta para o backend em Render para testes locais.
   // Em produção com Vercel, use a variável de build VITE_API_BASE_URL.
-  const API_URL = 'https://notification-service-rmnv.onrender.com/api/v1';
+  const API_URL = 'https://api.carolinenotificacoes.page/api/v1';
     const api = {
       get: (endpoint) => fetch(API_URL + endpoint).then(res => res.json()),
       post: (endpoint, body) => fetch(API_URL + endpoint, {
