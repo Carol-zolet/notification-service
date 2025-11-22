@@ -3,14 +3,14 @@ import multer from "multer";
 import { PrismaClient } from "@prisma/client";
 import { NodemailerService } from "../services/nodemailer.service";
 import { MockEmailService } from "../services/mock-email.service";
-import { BrevoApiService } from "./services/brevo-api.service";
+import { BrevoApiService } from "../../application/services/brevo-api-email.service";
 
 export const router = Router();
 const prisma = new PrismaClient();
 const emailService = process.env.BREVO_API_KEY
   ? new BrevoApiService(
       process.env.BREVO_API_KEY!,
-      process.env.BREVO_SENDER || 'noreply@26fit.com.br'
+      process.env.BREVO_SENDER || 'carolinezolet@gmail.com'
     )
   : (process.env.SMTP_HOST
       ? new NodemailerService()
