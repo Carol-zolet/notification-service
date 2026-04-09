@@ -1,10 +1,21 @@
-﻿import { Router } from "express";
+import { Router } from "express";
 import multer from "multer";
 import { PrismaClient } from "@prisma/client";
+import { z } from "zod";
 import { NodemailerService } from "../services/nodemailer.service";
 import { MockEmailService } from "../services/mock-email.service";
 import { BrevoApiService } from "../../application/services/brevo-api-email.service";
 import { PdfPayslipSplitterService } from '../../application/services/pdf-payslip-splitter.service';
+
+const emailSchema = z.string().email();
+
+/** Returns a safe error message: full detail in non-production, generic string in production. */
+function safeErrorMessage(err: any, fallback = "Erro interno"): string {
+  if (process.env.NODE_ENV !== 'production') {
+    return (err && (err.message || String(err))) || fallback;
+  }
+  return fallback;
+}
 
 export const router = Router();
 const prisma = new PrismaClient();
@@ -102,7 +113,7 @@ router.post("/unidades", async (req, res) => {
     });
     res.status(201).json({ unidade: nova.unidade });
   } catch (error: any) {
-    res.status(500).json({ error: error.message || "Erro ao criar unidade" });
+    res.status(500).json({ error: safeErrorMessage(error, "Erro ao criar unidade") });
   }
 });
 
@@ -119,7 +130,7 @@ router.put("/unidades/:nomeAntigo", async (req, res) => {
     if (atualizados.count === 0) return res.status(404).json({ error: "Unidade não encontrada" });
     res.json({ unidade: novoNome, atualizados: atualizados.count });
   } catch (error: any) {
-    res.status(500).json({ error: error.message || "Erro ao atualizar unidade" });
+    res.status(500).json({ error: safeErrorMessage(error, "Erro ao atualizar unidade") });
   }
 });
 
@@ -131,7 +142,7 @@ router.delete("/unidades/:nome", async (req, res) => {
     if (excluidos.count === 0) return res.status(404).json({ error: "Unidade não encontrada" });
     res.json({ message: "Unidade excluída com sucesso", excluidos: excluidos.count });
   } catch (error: any) {
-    res.status(500).json({ error: error.message || "Erro ao excluir unidade" });
+    res.status(500).json({ error: safeErrorMessage(error, "Erro ao excluir unidade") });
   }
 });
 
@@ -148,7 +159,7 @@ router.get("/colaboradores", async (req, res) => {
     });
     res.json(colabs);
   } catch (error: any) {
-    res.status(500).json({ error: error.message || "Erro ao buscar colaboradores" });
+    res.status(500).json({ error: safeErrorMessage(error, "Erro ao buscar colaboradores") });
   }
 });
 
@@ -157,6 +168,9 @@ router.post("/colaboradores", async (req, res) => {
   const { nome, email, unidade } = req.body;
   if (!nome || !email || !unidade) {
     return res.status(400).json({ error: "Campos obrigatórios: nome, email, unidade" });
+  }
+  if (!emailSchema.safeParse(email).success) {
+    return res.status(400).json({ error: "Formato de email inválido" });
   }
   try {
     const novo = await prisma.colaborador.create({
@@ -167,7 +181,7 @@ router.post("/colaboradores", async (req, res) => {
     if (error.code === 'P2002') {
       return res.status(409).json({ error: "Email já cadastrado" });
     }
-    res.status(500).json({ error: error.message || "Erro ao criar colaborador" });
+    res.status(500).json({ error: safeErrorMessage(error, "Erro ao criar colaborador") });
   }
 });
 
@@ -175,6 +189,9 @@ router.post("/colaboradores", async (req, res) => {
 router.put("/colaboradores/:id", async (req, res) => {
   const { id } = req.params;
   const { nome, email, unidade } = req.body;
+  if (email && !emailSchema.safeParse(email).success) {
+    return res.status(400).json({ error: "Formato de email inválido" });
+  }
   try {
     const atualizado = await prisma.colaborador.update({
       where: { id },
@@ -185,7 +202,7 @@ router.put("/colaboradores/:id", async (req, res) => {
     if (error.code === 'P2025') {
       return res.status(404).json({ error: "Colaborador não encontrado" });
     }
-    res.status(500).json({ error: error.message || "Erro ao editar colaborador" });
+    res.status(500).json({ error: safeErrorMessage(error, "Erro ao editar colaborador") });
   }
 });
 
@@ -199,7 +216,7 @@ router.delete("/colaboradores/:id", async (req, res) => {
     if (error.code === 'P2025') {
       return res.status(404).json({ error: "Colaborador não encontrado" });
     }
-    res.status(500).json({ error: error.message || "Erro ao excluir colaborador" });
+    res.status(500).json({ error: safeErrorMessage(error, "Erro ao excluir colaborador") });
   }
 });
 
@@ -208,6 +225,9 @@ router.post("/notifications", async (req, res) => {
   try {
     const { email, subject, message, scheduledAt, unidade } = req.body;
     if (!email) return res.status(400).json({ error: "Campo 'email' obrigatório" });
+    if (!emailSchema.safeParse(email).success) {
+      return res.status(400).json({ error: "Formato de email inválido" });
+    }
     const created = await prisma.notification.create({
       data: {
         email,        // ← em vez de 'to'
@@ -220,7 +240,7 @@ router.post("/notifications", async (req, res) => {
     res.status(201).json(created);
   } catch (e: any) {
     console.error("Erro ao agendar notificação:", e);
-    res.status(500).json({ error: e.message, stack: e.stack });
+    res.status(500).json({ error: safeErrorMessage(e, "Erro interno") });
   }
 });
 
@@ -256,7 +276,7 @@ router.get("/notifications/failed", async (req, res) => {
 
     res.json({ total: items.length, items });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || "Erro interno" });
+    res.status(500).json({ error: safeErrorMessage(err, "Erro interno") });
   }
 });
 
@@ -294,7 +314,7 @@ router.post("/notifications/reprocess", async (req, res) => {
 
     res.json(result);
   } catch (err: any) {
-    res.status(500).json({ error: err.message || "Erro interno" });
+    res.status(500).json({ error: safeErrorMessage(err, "Erro interno") });
   }
 });
 
@@ -411,7 +431,7 @@ router.post("/payslips/process", upload.single("pdfFile"), async (req, res) => {
             return { ok: true };
           } catch (e: any) {
             console.error(`[PAYSLIP] Erro ao enviar para ${c.email}:`, e.message);
-            return { ok: false, error: e.message };
+            return { ok: false, error: safeErrorMessage(e, "Erro ao enviar email") };
           }
         })
       );
@@ -446,7 +466,7 @@ router.post("/payslips/process", upload.single("pdfFile"), async (req, res) => {
     });
   } catch (err: any) {
     console.error("[PAYSLIP] Erro:", err);
-    res.status(500).json({ error: err.message || "Erro interno" });
+    res.status(500).json({ error: safeErrorMessage(err, "Erro interno") });
   }
 });
 
@@ -474,21 +494,28 @@ router.get("/payslips/history", async (req, res) => {
 
 
 // ==========================================
-// DEBUG ENDPOINTS
+// DEBUG ENDPOINTS (disabled in production)
 // ==========================================
 
+const debugGuard = (_req: any, res: any, next: any) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  return next();
+};
+
 // DEBUG - Total de colaboradores
-router.get('/debug/total', async (req, res) => {
+router.get('/debug/total', debugGuard, async (req, res) => {
   try {
     const total = await prisma.colaborador.count();
     res.json({ total, timestamp: new Date().toISOString() });
   } catch (error) {
-    res.status(500).json({ error: String(error) });
+    res.status(500).json({ error: safeErrorMessage(error) });
   }
 });
 
 // DEBUG - Listar todas as unidades com contagem
-router.get('/debug/unidades', async (req, res) => {
+router.get('/debug/unidades', debugGuard, async (req, res) => {
   try {
     const unidades = await prisma.colaborador.groupBy({
       by: ['unidade'],
@@ -498,12 +525,12 @@ router.get('/debug/unidades', async (req, res) => {
     
     res.json(unidades.map(u => ({ unidade: u.unidade, count: u._count.id })));
   } catch (error) {
-    res.status(500).json({ error: String(error) });
+    res.status(500).json({ error: safeErrorMessage(error) });
   }
 });
 
 // DEBUG - Colaboradores por unidade
-router.get('/debug/colaboradores-por-unidade', async (req, res) => {
+router.get('/debug/colaboradores-por-unidade', debugGuard, async (req, res) => {
   try {
     const colaboradores = await prisma.colaborador.findMany({
       select: { unidade: true },
@@ -517,7 +544,7 @@ router.get('/debug/colaboradores-por-unidade', async (req, res) => {
     
     res.json(grouped);
   } catch (error) {
-    res.status(500).json({ error: String(error) });
+    res.status(500).json({ error: safeErrorMessage(error) });
   }
 });
 
@@ -542,7 +569,7 @@ router.get('/admin/colaboradores', async (req, res) => {
     
     res.json(colaboradores);
   } catch (error) {
-    res.status(500).json({ error: String(error) });
+    res.status(500).json({ error: safeErrorMessage(error) });
   }
 });
 
@@ -561,7 +588,7 @@ router.get('/admin/unidades', async (req, res) => {
       count: u._count.id 
     })));
   } catch (error) {
-    res.status(500).json({ error: String(error) });
+    res.status(500).json({ error: safeErrorMessage(error) });
   }
 });
 
@@ -572,6 +599,10 @@ router.post('/admin/colaboradores', async (req, res) => {
     
     if (!nome || !email || !unidade) {
       return res.status(400).json({ error: 'Nome, email e unidade sao obrigatorios' });
+    }
+
+    if (!emailSchema.safeParse(email).success) {
+      return res.status(400).json({ error: 'Formato de email inválido' });
     }
     
     const existe = await prisma.colaborador.findUnique({
@@ -588,7 +619,7 @@ router.post('/admin/colaboradores', async (req, res) => {
     
     res.status(201).json(colaborador);
   } catch (error) {
-    res.status(500).json({ error: String(error) });
+    res.status(500).json({ error: safeErrorMessage(error) });
   }
 });
 
@@ -597,6 +628,10 @@ router.put('/admin/colaboradores/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { nome, email, unidade } = req.body;
+
+    if (email && !emailSchema.safeParse(email).success) {
+      return res.status(400).json({ error: 'Formato de email inválido' });
+    }
     
     const colaborador = await prisma.colaborador.update({
       where: { id },
@@ -609,7 +644,7 @@ router.put('/admin/colaboradores/:id', async (req, res) => {
     
     res.json(colaborador);
   } catch (error) {
-    res.status(500).json({ error: String(error) });
+    res.status(500).json({ error: safeErrorMessage(error) });
   }
 });
 
@@ -624,7 +659,7 @@ router.delete('/admin/colaboradores/:id', async (req, res) => {
     
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: String(error) });
+    res.status(500).json({ error: safeErrorMessage(error) });
   }
 });
 
@@ -684,7 +719,7 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
       return res.status(500).json({
         success: false,
         message: 'Erro ao processar PDF',
-        error: error.message,
+        error: safeErrorMessage(error, 'Erro ao processar PDF'),
       });
     }
 
@@ -807,7 +842,7 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
     return res.status(500).json({
       success: false,
       message: 'Erro ao distribuir holerites',
-      error: error.message,
+      error: safeErrorMessage(error, 'Erro ao distribuir holerites'),
     });
   }
 });
