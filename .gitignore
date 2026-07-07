@@ -42,3 +42,5 @@ public/admin/
 .DS_Store
 
 .env
+
+frontend/tsconfig.tsbuildinfo

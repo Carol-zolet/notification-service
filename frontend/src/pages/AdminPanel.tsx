@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ImportPlanilha from '../components/ImportPlanilha';
 
 const API_BASE = 'https://api.carolinenotificacoes.page';
 
@@ -262,7 +263,7 @@ function UnidadesCRUD() {
 
 // ============= PAINEL PRINCIPAL COM ABAS =============
 export default function AdminPanel() {
-  const [abaAtiva, setAbaAtiva] = useState<'colaboradores' | 'unidades'>('colaboradores');
+  const [abaAtiva, setAbaAtiva] = useState<'colaboradores' | 'unidades' | 'importar'>('colaboradores');
   return (
     <div style={styles.adminPanel}>
       <div style={styles.header}>
@@ -271,9 +272,12 @@ export default function AdminPanel() {
       <div style={styles.tabs}>
         <button onClick={() => setAbaAtiva('colaboradores')} style={{ ...styles.tab, ...(abaAtiva === 'colaboradores' ? styles.tabActive : {}) }}>👥 Colaboradores</button>
         <button onClick={() => setAbaAtiva('unidades')} style={{ ...styles.tab, ...(abaAtiva === 'unidades' ? styles.tabActive : {}) }}>🏢 Unidades</button>
+        <button onClick={() => setAbaAtiva('importar')} style={{ ...styles.tab, ...(abaAtiva === 'importar' ? styles.tabActive : {}) }}>📥 Importar Planilha</button>
       </div>
       <div style={styles.content}>
-        {abaAtiva === 'colaboradores' ? <ColaboradoresCRUD /> : <UnidadesCRUD />}
+        {abaAtiva === 'colaboradores' ? <ColaboradoresCRUD />
+          : abaAtiva === 'unidades' ? <UnidadesCRUD />
+          : <ImportPlanilha />}
       </div>
     </div>
   );

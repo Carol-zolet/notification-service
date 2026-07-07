@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import payslipRoutes from './http/routes/payslip.routes';
+import importRoutes from './http/routes/import.routes';
 import { router } from './http/routes';
 
 const app = express();
@@ -19,7 +20,18 @@ app.use(express.static('public'));
 
 // Rotas
 app.use('/api/v1/payslips', payslipRoutes);
+app.use('/import', importRoutes);
 app.use(router); // <-- ADICIONA TODAS AS OUTRAS ROTAS
+
+// Rotas de debug: NUNCA em produção. Isoladas em arquivo próprio pra não
+// correr risco de subir sem querer num deploy futuro.
+if (process.env.NODE_ENV !== 'production') {
+  const { debugRouter } = require('./http/routes/debug.routes');
+  app.use(debugRouter);
+  console.log('⚠️  Rotas /debug/* ativas (NODE_ENV != production)');
+} else {
+  console.log('🔒 Rotas /debug/* desativadas (produção)');
+}
 
 const PORT = process.env.PORT || 3000;
 
