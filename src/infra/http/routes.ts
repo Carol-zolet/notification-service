@@ -476,51 +476,9 @@ router.get("/payslips/history", async (req, res) => {
 // ==========================================
 // DEBUG ENDPOINTS
 // ==========================================
-
-// DEBUG - Total de colaboradores
-router.get('/debug/total', async (req, res) => {
-  try {
-    const total = await prisma.colaborador.count();
-    res.json({ total, timestamp: new Date().toISOString() });
-  } catch (error) {
-    res.status(500).json({ error: String(error) });
-  }
-});
-
-// DEBUG - Listar todas as unidades com contagem
-router.get('/debug/unidades', async (req, res) => {
-  try {
-    const unidades = await prisma.colaborador.groupBy({
-      by: ['unidade'],
-      _count: { id: true },
-      orderBy: { unidade: 'asc' },
-    });
-    
-    res.json(unidades.map(u => ({ unidade: u.unidade, count: u._count.id })));
-  } catch (error) {
-    res.status(500).json({ error: String(error) });
-  }
-});
-
-// DEBUG - Colaboradores por unidade
-router.get('/debug/colaboradores-por-unidade', async (req, res) => {
-  try {
-    const colaboradores = await prisma.colaborador.findMany({
-      select: { unidade: true },
-    });
-    
-    const grouped: Record<string, number> = {};
-    colaboradores.forEach(c => {
-      const key = String(c.unidade ?? '');
-      grouped[key] = (grouped[key] || 0) + 1;
-    });
-    
-    res.json(grouped);
-  } catch (error) {
-    res.status(500).json({ error: String(error) });
-  }
-});
-
+// (rotas /debug/* foram movidas para src/infra/http/routes/debug.routes.ts,
+// montadas apenas fora de produção — ver src/infra/main.ts)
+// ==========================================
 
 // ==========================================
 // ADMIN ENDPOINTS
