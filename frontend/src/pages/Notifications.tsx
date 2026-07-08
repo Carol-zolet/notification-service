@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { config } from '../config';
+import { useAuth } from '../context/AuthContext';
 import './Notifications.css';
 
 interface Notification {
@@ -15,6 +16,7 @@ interface Notification {
 }
 
 export function Notifications() {
+  const { authFetch } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [failedNotifications, setFailedNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
@@ -38,7 +40,7 @@ export function Notifications() {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${config.apiBaseUrl}/notifications`);
+      const res = await authFetch(`${config.apiBaseUrl}/notifications`);
       const data = await res.json();
       setNotifications(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -51,7 +53,7 @@ export function Notifications() {
   const fetchFailedNotifications = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${config.apiBaseUrl}/notifications/failed?limit=100`);
+      const res = await authFetch(`${config.apiBaseUrl}/notifications/failed?limit=100`);
       const data = await res.json();
       setFailedNotifications(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -70,7 +72,7 @@ export function Notifications() {
 
     try {
       setLoading(true);
-      const res = await fetch(`${config.apiBaseUrl}/notifications`, {
+      const res = await authFetch(`${config.apiBaseUrl}/notifications`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -95,7 +97,7 @@ export function Notifications() {
 
     try {
       setLoading(true);
-      const res = await fetch(`${config.apiBaseUrl}/notifications/reprocess`, {
+      const res = await authFetch(`${config.apiBaseUrl}/notifications/reprocess`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ limit: 100 }),

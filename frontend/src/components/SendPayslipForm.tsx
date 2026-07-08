@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { config } from '../config';
+import { useAuth } from '../context/AuthContext';
 
 const API_BASE = `${config.apiBaseUrl}`;
 
 export function SendPayslipForm() {
+  const { authFetch } = useAuth();
   const [unidades, setUnidades] = useState<string[]>([]);
   const [unidade, setUnidade] = useState('');
   const [subject, setSubject] = useState('Holerite');
@@ -14,7 +16,7 @@ export function SendPayslipForm() {
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/unidades`)
+    authFetch(`${API_BASE}/unidades`)
       .then(r => r.json())
       .then(d => setUnidades(Array.isArray(d) ? d : []))
       .catch(e => console.warn(e));
@@ -34,7 +36,7 @@ export function SendPayslipForm() {
       fd.append('unidade', unidade);
       fd.append('subject', subject);
       fd.append('message', message);
-      const res = await fetch(`${API_BASE}/payslips/process`, { method: 'POST', body: fd });
+      const res = await authFetch(`${API_BASE}/payslips/process`, { method: 'POST', body: fd });
       const json = await res.json();
       if (!res.ok) {
         setErro(json.error || 'Erro');

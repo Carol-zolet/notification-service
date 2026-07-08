@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { config } from '../config';
+import { useAuth } from '../context/AuthContext';
 import './History.css';
 
 interface HistoryItem {
@@ -13,6 +14,7 @@ interface HistoryItem {
 }
 
 export function History() {
+  const { authFetch } = useAuth();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -30,7 +32,7 @@ export function History() {
 
   const fetchUnidades = async () => {
     try {
-      const res = await fetch(`${config.apiBaseUrl}/unidades`);
+      const res = await authFetch(`${config.apiBaseUrl}/unidades`);
       const data = await res.json();
       setUnidades(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -42,7 +44,7 @@ export function History() {
     try {
       setLoading(true);
       const url = `${config.apiBaseUrl}/payslips/history?page=${currentPage}&limit=10${filterUnidade ? `&unidade=${encodeURIComponent(filterUnidade)}` : ''}`;
-      const res = await fetch(url);
+      const res = await authFetch(url);
       const data = await res.json();
 
       setHistory(Array.isArray(data.history) ? data.history : []);

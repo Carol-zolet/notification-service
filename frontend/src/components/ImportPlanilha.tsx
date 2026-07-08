@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { config } from '../config';
+import { useAuth } from '../context/AuthContext';
 
 interface RegistroPlanilha {
   nome: string;
@@ -40,6 +41,7 @@ interface PreviewResponse {
 }
 
 export default function ImportPlanilha() {
+  const { authFetch } = useAuth();
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
   const [emailsExcluir, setEmailsExcluir] = useState<Set<string>>(new Set());
@@ -92,7 +94,7 @@ export default function ImportPlanilha() {
     try {
       const formData = new FormData();
       formData.append('planilha', arquivo);
-      const res = await fetch(`${config.apiBaseUrl}/import/colaboradores/preview`, {
+      const res = await authFetch(`${config.apiBaseUrl}/import/colaboradores/preview`, {
         method: 'POST',
         body: formData,
       });
@@ -131,7 +133,7 @@ export default function ImportPlanilha() {
     setLoading(true);
     setErro('');
     try {
-      const res = await fetch(`${config.apiBaseUrl}/import/colaboradores/confirm`, {
+      const res = await authFetch(`${config.apiBaseUrl}/import/colaboradores/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

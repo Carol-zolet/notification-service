@@ -4,12 +4,37 @@ import { PrismaClient } from "@prisma/client";
 import { lerPlanilha, computeDiff } from "./import-planilha.util";
 
 const prisma = new PrismaClient();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB, mesmo limite usado na rota de payslip
+  fileFilter: (_req, file, cb) => {
+    const tiposAceitos = [
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+      "application/vnd.ms-excel", // .xls
+      "text/csv",
+      "application/csv",
+    ];
+    if (tiposAceitos.includes(file.mimetype) || /\.(xlsx|xls|csv)$/i.test(file.originalname)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Formato inválido. Envie um arquivo .xlsx, .xls ou .csv"));
+    }
+  },
+});
 
 export const importRouter = Router();
 
+function uploadComTratamentoDeErro(req: any, res: any, next: any) {
+  upload.single("planilha")(req, res, (err: any) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || "Erro no upload do arquivo" });
+    }
+    next();
+  });
+}
+
 // ============= PREVIEW (não altera nada no banco) =============
-importRouter.post("/colaboradores/preview", upload.single("planilha"), async (req, res) => {
+importRouter.post("/colaboradores/preview", uploadComTratamentoDeErro, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "Envie o arquivo no campo 'planilha'" });

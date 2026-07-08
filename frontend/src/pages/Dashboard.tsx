@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { config } from '../config';
+import { useAuth } from '../context/AuthContext';
 import './Dashboard.css';
 
 interface Stats {
@@ -11,6 +12,7 @@ interface Stats {
 }
 
 export function Dashboard() {
+  const { authFetch } = useAuth();
   const [stats, setStats] = useState<Stats>({
     totalColaboradores: 0,
     totalUnidades: 0,
@@ -29,10 +31,10 @@ export function Dashboard() {
   const fetchStats = async () => {
     try {
       const [colaboradoresRes, unidadesRes, notificationsRes, failedRes] = await Promise.all([
-        fetch(`${config.apiBaseUrl}/colaboradores`).catch(() => ({ json: async () => [] })),
-        fetch(`${config.apiBaseUrl}/admin/unidades`).catch(() => ({ json: async () => [] })),
-        fetch(`${config.apiBaseUrl}/notifications`).catch(() => ({ json: async () => [] })),
-        fetch(`${config.apiBaseUrl}/notifications/failed?limit=100`).catch(() => ({ json: async () => [] })),
+        authFetch(`${config.apiBaseUrl}/colaboradores`).catch(() => ({ json: async () => [] })),
+        authFetch(`${config.apiBaseUrl}/admin/unidades`).catch(() => ({ json: async () => [] })),
+        authFetch(`${config.apiBaseUrl}/notifications`).catch(() => ({ json: async () => [] })),
+        authFetch(`${config.apiBaseUrl}/notifications/failed?limit=100`).catch(() => ({ json: async () => [] })),
       ]);
 
       const colaboradores = await colaboradoresRes.json();
@@ -60,7 +62,7 @@ export function Dashboard() {
 
   const fetchRecentHistory = async () => {
     try {
-      const res = await fetch(`${config.apiBaseUrl}/payslips/history?page=1&limit=5`);
+      const res = await authFetch(`${config.apiBaseUrl}/payslips/history?page=1&limit=5`);
       const data = await res.json();
       setRecentHistory(Array.isArray(data.history) ? data.history : []);
     } catch (error) {

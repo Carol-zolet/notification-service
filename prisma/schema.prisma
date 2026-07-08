@@ -37,3 +37,14 @@ model SendHistory {
   testRecipient String?
   createdAt     DateTime @default(now())
 }
+
+model LoginCode {
+  id        String   @id @default(uuid())
+  email     String
+  codeHash  String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}

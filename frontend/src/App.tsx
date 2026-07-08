@@ -6,9 +6,16 @@ import { Payslip } from './pages/Payslip';
 import { Notifications } from './pages/Notifications';
 import { History } from './pages/History';
 import AdminPanel from './pages/AdminPanel';
+import Login from './pages/Login';
+import { useAuth } from './context/AuthContext';
 
 function App() {
+  const { isAuthenticated } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
+
+  if (!isAuthenticated) {
+    return <Login />;
+  }
 
   const renderPage = () => {
     switch (currentPage) {

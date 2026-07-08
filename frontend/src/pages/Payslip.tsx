@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { config } from '../config';
+import { useAuth } from '../context/AuthContext';
 import './Payslip.css';
 
 interface Colaborador {
@@ -19,6 +20,7 @@ interface DistribuicaoResponse {
 }
 
 export function Payslip() {
+  const { authFetch } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [unidade, setUnidade] = useState<string>('');
   const [assunto, setAssunto] = useState<string>('Holerite');
@@ -62,7 +64,7 @@ export function Payslip() {
 
   const fetchUnidades = async () => {
     try {
-      const res = await fetch(`${config.apiBaseUrl}/unidades`);
+      const res = await authFetch(`${config.apiBaseUrl}/unidades`);
       const data = await res.json();
       setUnidades(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -73,7 +75,7 @@ export function Payslip() {
   const fetchColaboradores = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${config.apiBaseUrl}/colaboradores?unidade=${encodeURIComponent(unidade)}`);
+      const res = await authFetch(`${config.apiBaseUrl}/colaboradores?unidade=${encodeURIComponent(unidade)}`);
       const data = await res.json();
       setTodosColaboradores(data);
       setColaboradoresFiltrados(data);
@@ -113,7 +115,7 @@ export function Payslip() {
       formData.append('message', mensagem);
       formData.append('colaboradores', JSON.stringify(selectedColaboradores));
 
-      const res = await fetch(`${config.apiBaseUrl}/payslips/distribuir`, {
+      const res = await authFetch(`${config.apiBaseUrl}/payslips/distribuir`, {
         method: 'POST',
         body: formData,
       });

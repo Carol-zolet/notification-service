@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import payslipRoutes from './http/routes/payslip.routes';
 import importRoutes from './http/routes/import.routes';
+import authRoutes from './http/routes/auth.routes';
+import { requireAuth } from './http/middleware/auth.middleware';
 import { router } from './http/routes';
 
 const app = express();
@@ -20,6 +22,16 @@ app.use(express.static('public'));
 
 // Rotas
 app.use('/api/v1/payslips', payslipRoutes);
+
+// Auth: pública (é aqui que se consegue o token, então não pode exigir token)
+app.use('/auth', authRoutes);
+
+// A partir daqui, tudo que for /colaboradores, /unidades, /admin, /import,
+// /notifications ou /payslips exige um JWT válido — confirmado que nenhuma
+// automação externa (cron, workflow, webhook) depende dessas rotas sem login;
+// só o próprio frontend logado as usa.
+app.use(['/colaboradores', '/unidades', '/admin', '/import', '/notifications', '/payslips'], requireAuth);
+
 app.use('/import', importRoutes);
 app.use(router); // <-- ADICIONA TODAS AS OUTRAS ROTAS
 

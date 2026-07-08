@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import './Layout.css';
+import { useAuth } from '../context/AuthContext';
 
 interface LayoutProps {
   children: ReactNode;
@@ -8,6 +9,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
+  const { email, logout } = useAuth();
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'payslips', label: 'Enviar Holerites', icon: '📄' },
@@ -38,6 +40,28 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             </button>
           ))}
         </nav>
+        <div style={{ marginTop: 'auto', padding: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+          {email && (
+            <p style={{ fontSize: '12px', opacity: 0.7, margin: '0 0 8px 0', wordBreak: 'break-all' }}>
+              {email}
+            </p>
+          )}
+          <button
+            onClick={logout}
+            style={{
+              width: '100%',
+              padding: '8px',
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '4px',
+              color: 'inherit',
+              cursor: 'pointer',
+              fontSize: '13px',
+            }}
+          >
+            Sair
+          </button>
+        </div>
       </aside>
       <main className="main-content">
         <div className="content-wrapper">

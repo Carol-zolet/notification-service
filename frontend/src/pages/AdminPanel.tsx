@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ImportPlanilha from '../components/ImportPlanilha';
-
-const API_BASE = 'https://api.carolinenotificacoes.page';
+import { config } from '../config';
+import { useAuth } from '../context/AuthContext';
 
 // Tipos
 interface Colaborador {
@@ -14,6 +14,7 @@ interface Colaborador {
 
 // ============= COLABORADORES CRUD =============
 function ColaboradoresCRUD() {
+  const { authFetch } = useAuth();
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
   const [unidades, setUnidades] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,8 +28,8 @@ function ColaboradoresCRUD() {
     try {
       setLoading(true);
       const [colabRes, unidRes] = await Promise.all([
-        fetch(`${API_BASE}/colaboradores`),
-        fetch(`${API_BASE}/unidades`)
+        authFetch(`${config.apiBaseUrl}/colaboradores`),
+        authFetch(`${config.apiBaseUrl}/unidades`)
       ]);
       const colabData = await colabRes.json();
       const unidData = await unidRes.json();
@@ -46,14 +47,14 @@ function ColaboradoresCRUD() {
     e.preventDefault();
     try {
       if (editando) {
-        const res = await fetch(`${API_BASE}/colaboradores/${editando.id}`, {
+        const res = await authFetch(`${config.apiBaseUrl}/colaboradores/${editando.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
         });
         if (!res.ok) throw new Error('Erro ao atualizar');
       } else {
-        const res = await fetch(`${API_BASE}/colaboradores`, {
+        const res = await authFetch(`${config.apiBaseUrl}/colaboradores`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
@@ -76,7 +77,7 @@ function ColaboradoresCRUD() {
   const handleExcluir = async (id: string) => {
     if (!window.confirm('Deseja realmente excluir este colaborador?')) return;
     try {
-      const res = await fetch(`${API_BASE}/colaboradores/${id}`, { method: 'DELETE' });
+      const res = await authFetch(`${config.apiBaseUrl}/colaboradores/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Erro ao excluir');
       carregarDados();
     } catch (err) {
@@ -142,6 +143,7 @@ function ColaboradoresCRUD() {
 
 // ============= UNIDADES CRUD =============
 function UnidadesCRUD() {
+  const { authFetch } = useAuth();
   const [unidades, setUnidades] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -154,7 +156,7 @@ function UnidadesCRUD() {
   const carregarUnidades = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/unidades`);
+      const res = await authFetch(`${config.apiBaseUrl}/unidades`);
       const data = await res.json();
       setUnidades(data);
       setError('');
@@ -169,7 +171,7 @@ function UnidadesCRUD() {
     e.preventDefault();
     if (!novaUnidade.trim()) return;
     try {
-      const res = await fetch(`${API_BASE}/unidades`, {
+      const res = await authFetch(`${config.apiBaseUrl}/unidades`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ unidade: novaUnidade.trim() })
@@ -185,7 +187,7 @@ function UnidadesCRUD() {
   const handleEditar = async (nomeAntigo: string) => {
     if (!nomeEdit.trim()) return;
     try {
-      const res = await fetch(`${API_BASE}/unidades/${encodeURIComponent(nomeAntigo)}`, {
+      const res = await authFetch(`${config.apiBaseUrl}/unidades/${encodeURIComponent(nomeAntigo)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ unidade: nomeEdit.trim() })
@@ -202,7 +204,7 @@ function UnidadesCRUD() {
   const handleExcluir = async (nome: string) => {
     if (!window.confirm(`Deseja realmente excluir a unidade "${nome}"? Todos os colaboradores desta unidade serão removidos!`)) return;
     try {
-      const res = await fetch(`${API_BASE}/unidades/${encodeURIComponent(nome)}`, { method: 'DELETE' });
+      const res = await authFetch(`${config.apiBaseUrl}/unidades/${encodeURIComponent(nome)}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Erro ao excluir');
       carregarUnidades();
     } catch (err) {
