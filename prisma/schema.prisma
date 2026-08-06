@@ -48,3 +48,14 @@ model LoginCode {
 
   @@index([email])
 }
+
+model BatchLock {
+  id          String    @id @default(uuid())
+  unidade     String
+  periodo     String    // ano-mês de referência, ex: "2026-08"
+  status      String
+  iniciadoEm  DateTime  @default(now())
+  concluidoEm DateTime?
+
+  @@unique([unidade, periodo])
+}

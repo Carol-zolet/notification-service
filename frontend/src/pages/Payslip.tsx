@@ -19,6 +19,60 @@ interface DistribuicaoResponse {
   unidade: string;
 }
 
+interface ProgressoEnvio {
+  processed: number;
+  failed: number;
+  total: number;
+}
+
+/**
+ * Lê a resposta de /payslips/distribuir. Se vier como stream (Server-Sent Events,
+ * caminho normal quando o backend chega a processar o lote), reporta progresso em
+ * tempo real via onProgress e resolve com o evento final ('done'/'error'). Se vier
+ * como JSON simples (falhas rápidas de validação/lock, antes do streaming começar),
+ * resolve direto com o corpo.
+ */
+async function lerRespostaDistribuicao(
+  res: Response,
+  onProgress: (p: ProgressoEnvio) => void
+): Promise<DistribuicaoResponse> {
+  const contentType = res.headers.get('content-type') || '';
+
+  if (!contentType.includes('text/event-stream') || !res.body) {
+    return res.json();
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let final: DistribuicaoResponse | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let boundary: number;
+    while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+      const rawEvent = buffer.slice(0, boundary).trim();
+      buffer = buffer.slice(boundary + 2);
+      if (!rawEvent.startsWith('data:')) continue;
+
+      const evt = JSON.parse(rawEvent.slice(5).trim());
+      if (evt.type === 'progress' || evt.type === 'start') {
+        onProgress({ processed: evt.processed ?? 0, failed: evt.failed ?? 0, total: evt.total });
+      } else if (evt.type === 'done' || evt.type === 'error') {
+        final = evt;
+      }
+    }
+  }
+
+  if (!final) {
+    throw new Error('Conexão encerrada antes de receber o resultado final do envio');
+  }
+  return final;
+}
+
 export function Payslip() {
   const { authFetch } = useAuth();
   const [file, setFile] = useState<File | null>(null);
@@ -34,6 +88,7 @@ export function Payslip() {
   const [response, setResponse] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [selectedColaboradores, setSelectedColaboradores] = useState<string[]>([]);
   const [previewColaborador, setPreviewColaborador] = useState<Colaborador | null>(null);
+  const [progresso, setProgresso] = useState<ProgressoEnvio | null>(null);
 
   const itemsPerPage = 10;
   const totalPages = Math.ceil(colaboradoresFiltrados.length / itemsPerPage);
@@ -108,6 +163,7 @@ export function Payslip() {
 
     try {
       setLoading(true);
+      setProgresso(null);
       const formData = new FormData();
       formData.append('pdfFile', file);
       formData.append('unidade', unidade);
@@ -120,12 +176,12 @@ export function Payslip() {
         body: formData,
       });
 
-      const result: DistribuicaoResponse = await res.json();
-      
+      const result = await lerRespostaDistribuicao(res, setProgresso);
+
       if (result.success) {
-        setResponse({ 
-          type: 'success', 
-          text: `OK - ${result.processed} holerites distribuidos para ${result.unidade}` 
+        setResponse({
+          type: 'success',
+          text: `OK - ${result.processed} holerites distribuidos para ${result.unidade}`
         });
         setFile(null);
         setUnidade('');
@@ -141,6 +197,7 @@ export function Payslip() {
       setResponse({ type: 'error', text: 'Erro ao enviar holerites' });
     } finally {
       setLoading(false);
+      setProgresso(null);
     }
   };
 
@@ -298,8 +355,39 @@ export function Payslip() {
         onClick={handleEnviar}
         disabled={loading || !file || !unidade || selectedColaboradores.length === 0}
       >
-        {loading ? '⏳ Enviando...' : `📤 Enviar para ${selectedColaboradores.length} colaborador${selectedColaboradores.length > 1 ? 'es' : ''}`}
+        {loading
+          ? progresso
+            ? `⏳ Enviando... ${progresso.processed + progresso.failed} de ${progresso.total}`
+            : '⏳ Enviando...'
+          : `📤 Enviar para ${selectedColaboradores.length} colaborador${selectedColaboradores.length > 1 ? 'es' : ''}`}
       </button>
+
+      {loading && progresso && progresso.total > 0 && (
+        <div className="progresso-envio" style={{ marginTop: 12 }}>
+          <div
+            style={{
+              width: '100%',
+              height: 8,
+              background: '#e5e7eb',
+              borderRadius: 4,
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                width: `${Math.min(100, ((progresso.processed + progresso.failed) / progresso.total) * 100)}%`,
+                height: '100%',
+                background: progresso.failed > 0 ? '#f59e0b' : '#2563eb',
+                transition: 'width 0.3s ease',
+              }}
+            />
+          </div>
+          <p style={{ fontSize: 13, color: '#64748b', marginTop: 6 }}>
+            {progresso.processed} enviados
+            {progresso.failed > 0 ? `, ${progresso.failed} com erro` : ''} de {progresso.total}
+          </p>
+        </div>
+      )}
 
       {/* Pré-visualização do email bonito */}
       {previewColaborador && (
