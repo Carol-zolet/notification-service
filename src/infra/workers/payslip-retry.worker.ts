@@ -112,20 +112,42 @@ async function processarFilaPendentes() {
   }
 }
 
+// No plano free/starter do Render o serviço hiberna sem tráfego, e o
+// node-cron só dispara se o processo estiver de pé bem no minuto agendado
+// — sem catch-up. Por isso existe um segundo caminho pra rodar a fila: um
+// endpoint HTTP (ver /internal/payslip-retry/run em routes.ts) chamado por
+// um agendador externo, que acorda o serviço via requisição real. Os dois
+// caminhos passam por aqui pra nunca rodar em paralelo — evita o mesmo tipo
+// de duplicidade que a fila inteira existe pra prevenir.
+let emExecucao = false;
+
+async function executarFilaComGuarda(): Promise<{ executado: boolean }> {
+  if (emExecucao) {
+    console.warn('[PAYSLIP RETRY] ⚠ Execução da fila já em andamento — ignorando disparo concorrente');
+    return { executado: false };
+  }
+  emExecucao = true;
+  try {
+    await comRetry(() => processarFilaPendentes(), RETRY_DB_TENTATIVAS, RETRY_DB_DELAY_MS);
+    return { executado: true };
+  } finally {
+    emExecucao = false;
+  }
+}
+
 export function iniciarPayslipRetryWorker() {
   // Todo dia às 8h — mesmo fuso do servidor (configurar TZ no ambiente se precisar de horário local específico).
+  // Fica como fallback: se o serviço já estiver acordado às 8h por algum
+  // motivo (tráfego real, ou o agendador externo caiu bem nesse minuto),
+  // roda por aqui também. A guarda em executarFilaComGuarda impede duplicar
+  // com o disparo via /internal/payslip-retry/run.
   cron.schedule('0 8 * * *', () => {
-    // A execução inteira é reexecutável com segurança: cada item só sai da
-    // fila (PayslipPending.delete) depois que o envio + recibo são
-    // confirmados, então se a tentativa falhar no meio (ex: Neon caiu de
-    // novo depois de acordar) e cair pro retry, os itens já processados
-    // não são reenviados — só os que ainda estavam pendentes.
-    comRetry(() => processarFilaPendentes(), RETRY_DB_TENTATIVAS, RETRY_DB_DELAY_MS).catch((err) => {
+    executarFilaComGuarda().catch((err) => {
       console.error(`[PAYSLIP RETRY] Erro ao processar a fila mesmo após ${RETRY_DB_TENTATIVAS} tentativas:`, err);
     });
   });
-  console.log('[PAYSLIP RETRY] Worker de reenvio automático agendado (todo dia às 8h)');
+  console.log('[PAYSLIP RETRY] Worker de reenvio automático agendado (todo dia às 8h, + fallback via /internal/payslip-retry/run)');
 }
 
 // Exportado só pra permitir teste manual/disparo avulso sem esperar o cron.
-export { processarFilaPendentes, comRetry };
+export { processarFilaPendentes, comRetry, executarFilaComGuarda };

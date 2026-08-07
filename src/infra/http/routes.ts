@@ -540,7 +540,40 @@ router.get("/payslips/pending", async (req, res) => {
   }
 });
 
+// Disparo externo do processamento da fila de reenvio. Existe porque o
+// plano free/starter do Render hiberna o serviço sem tráfego, e o cron
+// interno (node-cron) só roda se o processo já estiver de pé no minuto
+// exato — sem essa rota, um agendador externo (cron-job.org, UptimeRobot,
+// GitHub Actions etc.) não teria como acordar o serviço E processar a fila
+// no mesmo passo. Fora do requireAuth (não está em /payslips) porque quem
+// chama é um serviço externo, não alguém logado — a autenticação aqui é
+// por segredo compartilhado, não por sessão.
+router.post("/internal/payslip-retry/run", async (req, res) => {
+  const segredoEsperado = process.env.CRON_SECRET;
+  const segredoRecebido = req.header("X-Cron-Secret");
 
+  // Falha fechado: sem CRON_SECRET configurado no ambiente, a rota nunca
+  // autoriza ninguém — não dá pra esquecer de configurar e deixar aberta.
+  if (!segredoEsperado || segredoRecebido !== segredoEsperado) {
+    return res.status(401).json({ error: "Não autorizado" });
+  }
+
+  try {
+    // Import dinâmico evita ciclo de import no nível de módulo entre
+    // routes.ts e payslip-retry.worker.ts (o worker já importa emailService
+    // daqui) — só é resolvido quando a rota é chamada, não na inicialização.
+    const { executarFilaComGuarda } = await import("../workers/payslip-retry.worker");
+    const resultado = await executarFilaComGuarda();
+
+    if (!resultado.executado) {
+      return res.status(200).json({ status: "ja_em_execucao", message: "Outra execução da fila já estava em andamento — ignorado" });
+    }
+    res.status(200).json({ status: "ok" });
+  } catch (error: any) {
+    console.error("[PAYSLIP RETRY] Erro ao processar fila via trigger externo:", error.message);
+    res.status(500).json({ error: error.message || "Erro ao processar a fila" });
+  }
+});
 
 // ==========================================
 // DEBUG ENDPOINTS
