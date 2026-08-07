@@ -1,0 +1,30 @@
+name: Payslip Retry Worker
+
+on:
+  schedule:
+    # 12h UTC = 9h Brasília (BRT, UTC-3)
+    # Roda 1h depois do node-cron interno (8h) como segunda camada de segurança
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+    # Permite disparar manualmente pela aba "Actions" do GitHub, útil pra testar
+
+jobs:
+  trigger-retry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chamar endpoint de retry de holerites pendentes
+        run: |
+          RESPONSE=$(curl -s -o /tmp/response.json -w "%{http_code}" -X POST \
+            https://api.carolinenotificacoes.page/internal/payslip-retry/run \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}")
+
+          echo "HTTP Status: $RESPONSE"
+          echo "Response body:"
+          cat /tmp/response.json
+
+          if [ "$RESPONSE" -ne 200 ]; then
+            echo "❌ Falhou com status $RESPONSE"
+            exit 1
+          fi
+
+          echo "✅ Worker de retry executado com sucesso"
