@@ -311,60 +311,29 @@ const upload = multer({
   },
 });
 
-// ---- Lock de idempotência pra disparo de lote de holerites (persistido no banco) ----
-// Chave é unidade + período (ano-mês) — "já mandei o holerite de agosto/2026 pra essa
-// unidade" é permanente, não expira sozinho. Só reabre com force=true, e mesmo assim
-// nunca fura um lock que está 'processando' de verdade (senão duas requisições
-// simultâneas mandariam e-mail em paralelo pra mesma unidade/período).
+// ---- Lock de concorrência pra disparo de lote de holerites (persistido no banco) ----
+// É só um mutex: impede duas requisições processando a mesma unidade+período ao
+// mesmo tempo. Não guarda mais "já enviado" — quem decide isso agora é o
+// PayslipReceipt, por colaborador. A linha é sempre apagada ao final (sucesso
+// ou erro), então um novo disparo pra mesma unidade+período nunca fica bloqueado
+// depois que o anterior termina — só pula quem já tem recibo.
 
 type LockResult =
   | { status: 'adquirido' }
-  | { status: 'processando'; iniciadoEm: Date }
-  | { status: 'ja_enviado'; concluidoEm: Date };
+  | { status: 'processando'; iniciadoEm: Date };
 
-async function tentarAdquirirLock(unidade: string, periodo: string, force: boolean): Promise<LockResult> {
-  // 1) Caminho feliz: nunca rodou pra essa unidade+período, cria o lock direto.
+async function tentarAdquirirLock(unidade: string, periodo: string): Promise<LockResult> {
   try {
     await prisma.batchLock.create({ data: { unidade, periodo, status: 'processando' } });
     return { status: 'adquirido' };
   } catch (e: any) {
     if (e.code !== 'P2002') throw e; // erro de banco de verdade, não é conflito de lock
+    const atual = await prisma.batchLock.findUnique({ where: { unidade_periodo: { unidade, periodo } } });
+    return { status: 'processando', iniciadoEm: atual!.iniciadoEm };
   }
-
-  // 2) Já existe lock — busca o estado atual.
-  const atual = await prisma.batchLock.findUnique({ where: { unidade_periodo: { unidade, periodo } } });
-
-  // 'processando' bloqueia sempre, mesmo com force — nunca deixa dois envios
-  // rodando ao mesmo tempo pra mesma unidade/período.
-  if (atual?.status === 'processando') {
-    return { status: 'processando', iniciadoEm: atual.iniciadoEm };
-  }
-
-  // Já foi concluído (holerite desse período já foi enviado) — só reabre com force explícito.
-  if (!force) {
-    return { status: 'ja_enviado', concluidoEm: atual!.concluidoEm! };
-  }
-
-  const reclaimed = await prisma.batchLock.updateMany({
-    where: { unidade, periodo, status: 'concluido' },
-    data: { status: 'processando', iniciadoEm: new Date(), concluidoEm: null },
-  });
-  if (reclaimed.count === 1) return { status: 'adquirido' };
-
-  // Corrida: outra requisição pegou o lock entre o findUnique e o updateMany acima.
-  const reCheck = await prisma.batchLock.findUnique({ where: { unidade_periodo: { unidade, periodo } } });
-  return { status: 'processando', iniciadoEm: reCheck!.iniciadoEm };
 }
 
 async function liberarLock(unidade: string, periodo: string) {
-  await prisma.batchLock.update({
-    where: { unidade_periodo: { unidade, periodo } },
-    data: { status: 'concluido', concluidoEm: new Date() },
-  });
-}
-
-async function liberarLockPorErro(unidade: string, periodo: string) {
-  // erro crítico: apaga o lock pra permitir tentar de novo imediatamente
   await prisma.batchLock.delete({ where: { unidade_periodo: { unidade, periodo } } }).catch(() => {});
 }
 
@@ -672,19 +641,13 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
       });
     }
 
-    // ---- Lock de idempotência ----
+    // ---- Lock de concorrência (impede duas requisições rodando ao mesmo tempo) ----
     const force = String(req.body.force || '').toLowerCase() === 'true';
-    const lock = await tentarAdquirirLock(unidade, periodo, force);
+    const lock = await tentarAdquirirLock(unidade, periodo);
     if (lock.status === 'processando') {
       return res.status(409).json({
         success: false,
         message: `Já existe um envio de holerites em andamento para a unidade "${unidade}" no período "${periodo}" (iniciado às ${lock.iniciadoEm.toLocaleTimeString('pt-BR')}).`,
-      });
-    }
-    if (lock.status === 'ja_enviado') {
-      return res.status(409).json({
-        success: false,
-        message: `Holerites da unidade "${unidade}" referentes ao período "${periodo}" já foram enviados em ${lock.concluidoEm.toLocaleString('pt-BR')}. Se isso foi intencional (reenvio), envie novamente com o campo "force=true".`,
       });
     }
 
@@ -697,7 +660,7 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
     });
 
     if (colaboradores.length === 0) {
-      await liberarLockPorErro(unidade, periodo);
+      await liberarLock(unidade, periodo);
       return res.status(404).json({
         success: false,
         message: `Nenhum colaborador encontrado para ${unidade}`,
@@ -716,7 +679,7 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
       console.log(`[PAYSLIP] PDF dividido em ${splitResultsMap.size} holerites individuais`);
     } catch (error: any) {
       console.error('[PAYSLIP] Erro ao dividir PDF:', error);
-      await liberarLockPorErro(unidade, periodo);
+      await liberarLock(unidade, periodo);
       return res.status(500).json({
         success: false,
         message: 'Erro ao processar PDF',
@@ -725,7 +688,7 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
     }
 
     if (splitResultsMap.size === 0) {
-      await liberarLockPorErro(unidade, periodo);
+      await liberarLock(unidade, periodo);
       return res.status(400).json({
         success: false,
         message: 'Nenhum holerite pôde ser extraído do PDF. Verifique se os nomes dos colaboradores estão corretos.',
@@ -746,7 +709,30 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
       })
       .filter((item): item is SplitResult => item !== null);
 
-    console.log(`[PAYSLIP] ${splitResults.length} holerites serão enviados`);
+    console.log(`[PAYSLIP] ${splitResults.length} holerites extraídos do PDF`);
+
+    // ---- Pular quem já recebeu esse período (idempotência por pessoa) ----
+    // Sem force: quem já tem recibo pra unidade+período é pulado, não reenviado.
+    // Com force: ignora os recibos e reenvia pra todo mundo mesmo assim.
+    let paraEnviar = splitResults;
+    let puladosJaEnviados = 0;
+
+    if (!force) {
+      const jaEnviados = await prisma.payslipReceipt.findMany({
+        where: {
+          unidade,
+          periodo,
+          colaboradorId: { in: splitResults.map((r) => r.colaborador.id) },
+        },
+        select: { colaboradorId: true },
+      });
+      const jaEnviadosSet = new Set(jaEnviados.map((r) => r.colaboradorId));
+      paraEnviar = splitResults.filter((r) => !jaEnviadosSet.has(r.colaborador.id));
+      puladosJaEnviados = splitResults.length - paraEnviar.length;
+      if (puladosJaEnviados > 0) {
+        console.log(`[PAYSLIP] ${puladosJaEnviados} colaborador(es) pulado(s) — já receberam o holerite de ${periodo}`);
+      }
+    }
 
     // Se testEmail foi fornecido, enviar todos para esse email
     if (testEmail) {
@@ -757,7 +743,7 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
     // recebe progresso real em tempo real, em vez de ficar minutos sem feedback
     // esperando a resposta síncrona do lote inteiro — foi exatamente a ausência
     // desse feedback que levou a Vero a achar que tinha travado e reenviar o
-    // arquivo, causando o envio duplicado que o BatchLock já bloqueia hoje.
+    // arquivo, causando o envio duplicado que o PayslipReceipt já filtra hoje.
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -767,7 +753,7 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
       res.write(`data: ${JSON.stringify(data)}\n\n`);
     };
 
-    emitEvent({ type: 'start', total: splitResults.length });
+    emitEvent({ type: 'start', total: paraEnviar.length, skipped: puladosJaEnviados });
 
     let processed = 0;
     let failed = 0;
@@ -778,10 +764,10 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
     const delay = Math.max(1000, Math.min(Number(delayMs), 5000));
 
     // Processar em lotes
-    for (let i = 0; i < splitResults.length; i += batch) {
-      const lote = splitResults.slice(i, i + batch);
+    for (let i = 0; i < paraEnviar.length; i += batch) {
+      const lote = paraEnviar.slice(i, i + batch);
       const loteNum = Math.floor(i / batch) + 1;
-      const totalLotes = Math.ceil(splitResults.length / batch);
+      const totalLotes = Math.ceil(paraEnviar.length / batch);
 
       console.log(`[PAYSLIP] Processando lote ${loteNum}/${totalLotes} (${lote.length} emails)`);
 
@@ -798,6 +784,20 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
               emailMessage,
               [{ filename: `holerite_${colaborador.nome.replace(/\s+/g, '_')}.pdf`, content: pdfBuffer }]
             );
+
+            // Grava o recibo — é isso que impede reenvio duplicado pra essa pessoa
+            // num disparo futuro pro mesmo período. Falha ao gravar não desfaz o
+            // e-mail já enviado, mas é logada bem alto porque é exatamente o que
+            // evita duplicidade depois.
+            try {
+              await prisma.payslipReceipt.upsert({
+                where: { unidade_periodo_colaboradorId: { unidade, periodo, colaboradorId: colaborador.id } },
+                update: { enviadoEm: new Date() },
+                create: { unidade, periodo, colaboradorId: colaborador.id },
+              });
+            } catch (recErr: any) {
+              console.error(`[PAYSLIP] ⚠⚠ Email enviado mas FALHOU AO GRAVAR RECIBO pra ${colaborador.nome} (${colaborador.email}) — risco de reenvio futuro:`, recErr.message);
+            }
 
             console.log(`[PAYSLIP] ✅ SUCESSO: ${colaborador.nome} (${colaborador.email})`);
             return { success: true, email: colaborador.email };
@@ -823,16 +823,16 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
       });
 
       // Progresso real pro frontend — "43 de 167 enviados"
-      emitEvent({ type: 'progress', processed, failed, total: splitResults.length });
+      emitEvent({ type: 'progress', processed, failed, total: paraEnviar.length, skipped: puladosJaEnviados });
 
       // Aguardar antes do próximo lote (exceto no último)
-      if (i + batch < splitResults.length) {
+      if (i + batch < paraEnviar.length) {
         console.log(`[PAYSLIP] Aguardando ${delay}ms antes do próximo lote...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
 
-    console.log(`[PAYSLIP] Concluído: ${processed} sucessos, ${failed} falhas de ${splitResults.length} total`);
+    console.log(`[PAYSLIP] Concluído: ${processed} sucessos, ${failed} falhas, ${puladosJaEnviados} pulados de ${splitResults.length} total`);
 
     // Salvar no histórico
     try {
@@ -840,7 +840,7 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
         data: {
           unidade,
           subject,
-          total: splitResults.length,
+          total: paraEnviar.length,
           dryRun: false,
           testRecipient: testEmail || null,
         },
@@ -857,14 +857,15 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
       message: 'Holerites processados e enviados individualmente',
       processed,
       failed,
-      total: splitResults.length,
+      skipped: puladosJaEnviados,
+      total: paraEnviar.length,
       unidade,
       errors: errors.length > 0 ? errors : undefined,
     });
     return res.end();
   } catch (error: any) {
     console.error('[PAYSLIP] ERRO CRÍTICO:', error);
-    await liberarLockPorErro(unidade, periodo);
+    await liberarLock(unidade, periodo);
     if (res.headersSent) {
       // Já estávamos em modo stream — não dá mais pra usar res.status().json(),
       // manda o erro como evento final e encerra a conexão.

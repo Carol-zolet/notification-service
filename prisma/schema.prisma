@@ -49,13 +49,29 @@ model LoginCode {
   @@index([email])
 }
 
+// Mutex puro: só existe uma linha aqui enquanto um envio está de fato em andamento
+// pra essa unidade+período. É apagada assim que termina (sucesso ou erro) — quem
+// controla "já enviei pra essa pessoa nesse período" é o PayslipReceipt, não isso.
 model BatchLock {
-  id          String    @id @default(uuid())
-  unidade     String
-  periodo     String    // ano-mês de referência, ex: "2026-08"
-  status      String
-  iniciadoEm  DateTime  @default(now())
-  concluidoEm DateTime?
+  id         String   @id @default(uuid())
+  unidade    String
+  periodo    String   // ano-mês de referência, ex: "2026-08"
+  status     String
+  iniciadoEm DateTime @default(now())
 
   @@unique([unidade, periodo])
+}
+
+// Um recibo por colaborador+período. Existência = "já recebeu o holerite desse mês".
+// Um novo disparo pra mesma unidade+período pula quem já tem recibo (a menos que
+// force=true), em vez de bloquear o lote inteiro — permite completar envios parciais
+// (ex: 3 pessoas que deram erro) sem duplicar quem já recebeu certo.
+model PayslipReceipt {
+  id            String   @id @default(uuid())
+  unidade       String
+  periodo       String
+  colaboradorId String
+  enviadoEm     DateTime @default(now())
+
+  @@unique([unidade, periodo, colaboradorId])
 }

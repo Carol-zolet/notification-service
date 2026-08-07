@@ -15,6 +15,7 @@ interface DistribuicaoResponse {
   message: string;
   processed: number;
   failed: number;
+  skipped?: number;
   total: number;
   unidade: string;
 }
@@ -22,6 +23,7 @@ interface DistribuicaoResponse {
 interface ProgressoEnvio {
   processed: number;
   failed: number;
+  skipped: number;
   total: number;
 }
 
@@ -60,7 +62,7 @@ async function lerRespostaDistribuicao(
 
       const evt = JSON.parse(rawEvent.slice(5).trim());
       if (evt.type === 'progress' || evt.type === 'start') {
-        onProgress({ processed: evt.processed ?? 0, failed: evt.failed ?? 0, total: evt.total });
+        onProgress({ processed: evt.processed ?? 0, failed: evt.failed ?? 0, skipped: evt.skipped ?? 0, total: evt.total });
       } else if (evt.type === 'done' || evt.type === 'error') {
         final = evt;
       }
@@ -179,9 +181,10 @@ export function Payslip() {
       const result = await lerRespostaDistribuicao(res, setProgresso);
 
       if (result.success) {
+        const puladosTxt = result.skipped ? ` (${result.skipped} já tinham recebido, pulados)` : '';
         setResponse({
           type: 'success',
-          text: `OK - ${result.processed} holerites distribuidos para ${result.unidade}`
+          text: `OK - ${result.processed} holerites distribuidos para ${result.unidade}${puladosTxt}`
         });
         setFile(null);
         setUnidade('');
@@ -385,6 +388,7 @@ export function Payslip() {
           <p style={{ fontSize: 13, color: '#64748b', marginTop: 6 }}>
             {progresso.processed} enviados
             {progresso.failed > 0 ? `, ${progresso.failed} com erro` : ''} de {progresso.total}
+            {progresso.skipped > 0 ? ` (+ ${progresso.skipped} já tinham recebido, pulados)` : ''}
           </p>
         </div>
       )}
