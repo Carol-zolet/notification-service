@@ -67,9 +67,17 @@ export class BrevoApiService {
       const messageId = result.body?.messageId || 'unknown';
       console.log(`✅ [Brevo API] Email enviado para ${to} - ID: ${messageId}`);
     } catch (error: any) {
+      const status = error?.response?.status;
       const errorMsg = error?.response?.body?.message || error.message || 'Erro desconhecido';
-      console.error(`❌ [Brevo API] Erro ao enviar para ${to}:`, errorMsg);
-      throw new Error(`Falha ao enviar email: ${errorMsg}`);
+      // status undefined = a requisição nunca recebeu resposta (timeout/conexão),
+      // não é a Brevo recusando o envio.
+      const origem = status ? `HTTP ${status}` : 'sem resposta (timeout/conexão)';
+      console.error(`❌ [Brevo API] Erro ao enviar para ${to} [${origem}]:`, errorMsg);
+
+      const err: any = new Error(`Falha ao enviar email: ${errorMsg}`);
+      err.status = status;
+      err.isTimeout = !status;
+      throw err;
     }
   }
 

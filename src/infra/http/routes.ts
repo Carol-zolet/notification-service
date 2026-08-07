@@ -5,10 +5,11 @@ import { NodemailerService } from "../services/nodemailer.service";
 import { MockEmailService } from "../services/mock-email.service";
 import { BrevoApiService } from "../../application/services/brevo-api-email.service";
 import { PdfPayslipSplitterService } from '../../application/services/pdf-payslip-splitter.service';
+import { classificarErro } from '../../application/services/classificar-erro-envio';
 
 export const router = Router();
 const prisma = new PrismaClient();
-const emailService = process.env.BREVO_API_KEY
+export const emailService = process.env.BREVO_API_KEY
   ? new BrevoApiService(
       process.env.BREVO_API_KEY!,
       process.env.BREVO_SENDER || 'carolinezolet@gmail.com'
@@ -497,6 +498,48 @@ router.get("/payslips/history", async (req, res) => {
   res.json({ total, page: Number(page), limit: take, items });
 });
 
+// Fila de holerites pendentes de reenvio automático (rate limit da Brevo).
+// Não retorna o pdfBuffer (binário, sem uso pra quem só quer ver o status).
+router.get("/payslips/pending", async (req, res) => {
+  try {
+    const { unidade } = req.query as Record<string, string>;
+    const where: any = {};
+    if (unidade) where.unidade = unidade;
+
+    const pendentes = await prisma.payslipPending.findMany({
+      where,
+      orderBy: { criadoEm: "asc" },
+      select: {
+        id: true,
+        unidade: true,
+        periodo: true,
+        colaboradorId: true,
+        motivo: true,
+        tentativas: true,
+        criadoEm: true,
+        ultimaTentativa: true,
+      },
+    });
+
+    // Junta nome/email do colaborador pra ficar legível (tabela não tem relação formal).
+    const colaboradorIds = pendentes.map((p) => p.colaboradorId);
+    const colaboradores = await prisma.colaborador.findMany({
+      where: { id: { in: colaboradorIds } },
+      select: { id: true, nome: true, email: true },
+    });
+    const colaboradorPorId = new Map(colaboradores.map((c) => [c.id, c]));
+
+    const items = pendentes.map((p) => ({
+      ...p,
+      colaborador: colaboradorPorId.get(p.colaboradorId) || null,
+    }));
+
+    res.json({ total: items.length, items });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Erro ao buscar fila de pendentes" });
+  }
+});
+
 
 
 // ==========================================
@@ -803,6 +846,23 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
             return { success: true, email: colaborador.email };
           } catch (error: any) {
             console.error(`[PAYSLIP] ❌ ERRO: ${colaborador.email} - ${error.message}`);
+
+            // Rate limit é temporário — vale a pena reenviar depois via o cron
+            // automático. Qualquer outro erro (email inválido, anexo corrompido,
+            // etc.) é definitivo, então NÃO entra na fila — retentar não resolveria.
+            if (classificarErro(error) === 'rate_limit') {
+              try {
+                await prisma.payslipPending.upsert({
+                  where: { unidade_periodo_colaboradorId: { unidade, periodo, colaboradorId: colaborador.id } },
+                  update: { tentativas: { increment: 1 }, ultimaTentativa: new Date() },
+                  create: { unidade, periodo, colaboradorId: colaborador.id, motivo: 'rate_limit', pdfBuffer: new Uint8Array(pdfBuffer) },
+                });
+                console.warn(`[PAYSLIP] ⏳ Rate limit — ${colaborador.email} entrou na fila pra reenvio automático`);
+              } catch (queueErr: any) {
+                console.error(`[PAYSLIP] ⚠⚠ Rate limit detectado mas FALHOU AO ENFILEIRAR pra ${colaborador.email} — não vai reenviar sozinho:`, queueErr.message);
+              }
+            }
+
             throw error;
           }
         })

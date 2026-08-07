@@ -75,3 +75,23 @@ model PayslipReceipt {
 
   @@unique([unidade, periodo, colaboradorId])
 }
+
+// Fila de reenvio automático — só entra aqui quem falhou especificamente por
+// rate limit da Brevo (nunca por erro definitivo tipo email inválido, isso
+// continua caindo como falha normal). Um cron diário tenta reenviar; depois
+// de LIMITE_TENTATIVAS (hoje 5) sem sucesso, sai da fila e vira alerta manual.
+// Guarda o PDF individual já cortado pra não precisar re-rodar o splitter
+// no reenvio, mesmo que o arquivo original não esteja mais disponível.
+model PayslipPending {
+  id              String    @id @default(uuid())
+  unidade         String
+  periodo         String
+  colaboradorId   String
+  motivo          String    // 'rate_limit' — único motivo que entra na fila hoje
+  tentativas      Int       @default(1)
+  criadoEm        DateTime  @default(now())
+  ultimaTentativa DateTime?
+  pdfBuffer       Bytes
+
+  @@unique([unidade, periodo, colaboradorId])
+}

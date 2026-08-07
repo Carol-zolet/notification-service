@@ -5,6 +5,7 @@ import importRoutes from './http/routes/import.routes';
 import authRoutes from './http/routes/auth.routes';
 import { requireAuth } from './http/middleware/auth.middleware';
 import { router } from './http/routes';
+import { iniciarPayslipRetryWorker } from './workers/payslip-retry.worker';
 
 const app = express();
 
@@ -52,6 +53,8 @@ const server = app.listen(PORT, () => {
   console.log(`📧 Email Service: ${process.env.SMTP_HOST ? 'NodemailerService (REAL)' : 'MockEmailService (SIMULADO)'}`);
   console.log(`📨 SMTP Host: ${process.env.SMTP_HOST || 'NÃO CONFIGURADO'}`);
   console.log(`👤 SMTP User: ${process.env.SMTP_USER || 'NÃO CONFIGURADO'}`);
+
+  iniciarPayslipRetryWorker();
 });
 
 // Configurar timeouts generosos para envio de emails
