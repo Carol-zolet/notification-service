@@ -19,6 +19,21 @@ interface PayslipPosition {
   confidence: MatchConfidence;
 }
 
+export interface PendenteRevisao {
+  nome: string;
+  pdfBuffer: Buffer;
+}
+
+export interface SplitPayslipResult {
+  // Só matches exatos — únicos prontos pra entrar no envio automático.
+  paginas: Map<string, Buffer>;
+  // Matches por fallback (fuzzy): o próprio nome já é incerto o bastante
+  // pra pedir confirmação de um humano antes de sair — nunca são enviados
+  // sozinhos. Foi um fuzzy match automático (não confirmado) que causou o
+  // incidente de holerite trocado do dia 04/09/2026 (Milena/unidade 1).
+  pendentesRevisao: PendenteRevisao[];
+}
+
 export class PdfPayslipSplitterService {
   private pdfjsLib: any;
 
@@ -33,9 +48,10 @@ export class PdfPayslipSplitterService {
     }
   }
 
-  async splitPayslipPdf(pdfBuffer: Buffer, employees: Employee[]): Promise<Map<string, Buffer>> {
+  async splitPayslipPdf(pdfBuffer: Buffer, employees: Employee[]): Promise<SplitPayslipResult> {
     const result = new Map<string, Buffer>();
-    const matchesFracos: string[] = []; // pra reportar no final, mesmo sem bloquear o envio
+    const pendentesRevisao: PendenteRevisao[] = [];
+    const matchesFracos: string[] = []; // só pra log — o bloqueio de verdade é o array acima
 
     try {
       console.log('[PDF Splitter] Iniciando divisão do PDF');
@@ -76,13 +92,18 @@ export class PdfPayslipSplitterService {
         for (const payslip of payslipsInPage) {
           try {
             const croppedPdf = await this.createCroppedPdf(pdfDoc, pageIndex, payslip.position);
-            result.set(payslip.employeeName, croppedPdf);
 
             if (payslip.confidence === 'fuzzy') {
+              // NÃO entra no Map de envio automático — fica pendente de
+              // confirmação manual. Foi um fuzzy match automático que
+              // causou a troca de holerite entre duas pessoas em 04/09/2026.
+              pendentesRevisao.push({ nome: payslip.employeeName, pdfBuffer: croppedPdf });
               matchesFracos.push(payslip.employeeName);
+              console.log(`[PDF Splitter] ⏸ PDF criado para: ${payslip.employeeName} (${payslip.position}) [fuzzy] — retido pra revisão manual, não vai pro envio automático`);
+            } else {
+              result.set(payslip.employeeName, croppedPdf);
+              console.log(`[PDF Splitter] ✅ PDF criado para: ${payslip.employeeName} (${payslip.position}) [${payslip.confidence}]`);
             }
-
-            console.log(`[PDF Splitter] ✅ PDF criado para: ${payslip.employeeName} (${payslip.position}) [${payslip.confidence}]`);
           } catch (error: any) {
             console.error(`[PDF Splitter] ❌ Erro ao criar PDF para ${payslip.employeeName}:`, error.message);
           }
@@ -91,9 +112,9 @@ export class PdfPayslipSplitterService {
 
       console.log(`[PDF Splitter] ✅ Concluído: ${result.size} PDFs individuais criados de ${totalPages * 2} esperados`);
       if (matchesFracos.length > 0) {
-        console.warn(`[PDF Splitter] ⚠⚠ ATENÇÃO: ${matchesFracos.length} holerite(s) identificado(s) por fallback (menos confiável) — confira manualmente antes de confiar 100%: ${matchesFracos.join(', ')}`);
+        console.warn(`[PDF Splitter] ⚠⚠ ATENÇÃO: ${matchesFracos.length} holerite(s) identificado(s) por fallback (menos confiável) — retidos, NÃO entraram no envio automático, precisam de confirmação manual: ${matchesFracos.join(', ')}`);
       }
-      return result;
+      return { paginas: result, pendentesRevisao };
     } catch (error: any) {
       console.error('[PDF Splitter] ❌ Erro ao processar PDF:', error);
       throw new Error(`Falha ao dividir PDF: ${error.message}`);
@@ -195,7 +216,14 @@ export class PdfPayslipSplitterService {
     const candidatos = employees
       .map((employee) => {
         const normalizedName = this.normalizeText(employee.nome);
-        const nameParts = normalizedName.split(' ').filter((p) => p.length > MIN_PART_LEN);
+        // Set (não array) é essencial aqui: nomes com sobrenome repetido
+        // (ex: "MILENA LOPES DE LOPES", "FERNANDA SILVA DA SILVA") geram a
+        // mesma parte duas vezes no split. Contando num array puro, uma
+        // única ocorrência real de "lopes" no texto batia como 2 acertos
+        // (uma pra cada "lopes" duplicado no array) — suficiente sozinha
+        // pra estourar o MIN_MATCHES e confirmar um fuzzy match errado.
+        // Com Set, partes repetidas do nome só contam uma vez.
+        const nameParts = [...new Set(normalizedName.split(' ').filter((p) => p.length > MIN_PART_LEN))];
         const matches = nameParts.filter((part) => normalizedText.includes(part)).length;
         const confiavel =
           matches >= MIN_MATCHES || (nameParts.length === 1 && matches === 1 && nameParts[0].length > 6);

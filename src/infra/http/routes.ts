@@ -404,7 +404,11 @@ router.post("/payslips/process", upload.single("pdfFile"), async (req, res) => {
 
     // Dividir o PDF por colaborador
     const splitterService = new PdfPayslipSplitterService();
-    const splitPdfs = await splitterService.splitPayslipPdf(buffer, colaboradores);
+    const { paginas: splitPdfs, pendentesRevisao } = await splitterService.splitPayslipPdf(buffer, colaboradores);
+
+    if (pendentesRevisao.length > 0) {
+      console.warn(`[PAYSLIP] ${pendentesRevisao.length} holerite(s) com match de baixa confiança NÃO enviados automaticamente: ${pendentesRevisao.map((p) => p.nome).join(', ')}`);
+    }
 
     if (splitPdfs.size === 0) {
       return res.status(400).json({ error: "Não foi possível extrair holerites individuais do PDF" });
@@ -470,6 +474,9 @@ router.post("/payslips/process", upload.single("pdfFile"), async (req, res) => {
       failed,
       total,
       unidade: unidade || "Teste",
+      // Match de baixa confiança (fuzzy) — nunca enviados sozinhos, precisam
+      // de conferência manual do PDF original antes de mandar pra pessoa certa.
+      pendentesRevisaoManual: pendentesRevisao.map((p) => p.nome),
     });
   } catch (err: any) {
     console.error("[PAYSLIP] Erro:", err);
@@ -749,10 +756,20 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
 
     const splitter = new PdfPayslipSplitterService();
     let splitResultsMap: Map<string, Buffer>;
+    let pendentesRevisao: Array<{ nome: string; pdfBuffer: Buffer }>;
 
     try {
-      splitResultsMap = await splitter.splitPayslipPdf(pdfBuffer, colaboradores);
+      const splitOutput = await splitter.splitPayslipPdf(pdfBuffer, colaboradores);
+      splitResultsMap = splitOutput.paginas;
+      pendentesRevisao = splitOutput.pendentesRevisao;
       console.log(`[PAYSLIP] PDF dividido em ${splitResultsMap.size} holerites individuais`);
+      if (pendentesRevisao.length > 0) {
+        // Match de baixa confiança: nunca sai automático, precisa de olho
+        // humano no PDF original antes de confirmar de quem é a página.
+        // Foi um fuzzy match sem essa revisão que causou o incidente de
+        // holerite trocado em 04/09/2026 (unidade 1, Milena/outra pessoa).
+        console.warn(`[PAYSLIP] ⏸ ${pendentesRevisao.length} holerite(s) retido(s) por match de baixa confiança, NÃO enviados: ${pendentesRevisao.map((p) => p.nome).join(', ')}`);
+      }
     } catch (error: any) {
       console.error('[PAYSLIP] Erro ao dividir PDF:', error);
       await liberarLock(unidade, periodo);
@@ -829,7 +846,14 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
       res.write(`data: ${JSON.stringify(data)}\n\n`);
     };
 
-    emitEvent({ type: 'start', total: paraEnviar.length, skipped: puladosJaEnviados });
+    emitEvent({
+      type: 'start',
+      total: paraEnviar.length,
+      skipped: puladosJaEnviados,
+      // Retidos por baixa confiança — não contam nem como sucesso nem como
+      // falha, ficam de fora do envio até alguém conferir o PDF na mão.
+      pendentesRevisaoManual: pendentesRevisao.map((p) => p.nome),
+    });
 
     let processed = 0;
     let failed = 0;
@@ -954,6 +978,10 @@ router.post('/payslips/distribuir', upload.single('pdfFile'), async (req, res) =
       total: paraEnviar.length,
       unidade,
       errors: errors.length > 0 ? errors : undefined,
+      // Match de baixa confiança retido — precisa conferir o PDF original
+      // na mão e enviar manualmente pra pessoa certa antes de considerar
+      // esse envio realmente completo.
+      pendentesRevisaoManual: pendentesRevisao.length > 0 ? pendentesRevisao.map((p) => p.nome) : undefined,
     });
     return res.end();
   } catch (error: any) {
