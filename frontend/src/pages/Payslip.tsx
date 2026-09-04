@@ -409,16 +409,20 @@ export function Payslip() {
               }}
             />
           </div>
-          <p style={{ fontSize: 13, color: '#64748b', marginTop: 6 }}>
-            {progresso.processed} enviados
-            {progresso.failed > 0 ? `, ${progresso.failed} com erro` : ''} de {progresso.total}
-            {progresso.skipped > 0 ? ` (+ ${progresso.skipped} já tinham recebido, pulados)` : ''}
-          </p>
-          {progresso.pendentesRevisaoManual && progresso.pendentesRevisaoManual.length > 0 && (
+          {progresso.pendentesRevisaoManual && progresso.pendentesRevisaoManual.length > 0 ? (
             <div className="response response-warning" style={{ marginTop: 10 }}>
-              ⚠️ {progresso.pendentesRevisaoManual.length} holerite(s) com nome incerto NÃO serão enviados automaticamente — confira o PDF na mão pra:{'\n'}
+              {progresso.processed} enviados
+              {progresso.failed > 0 ? `, ${progresso.failed} com erro` : ''} de {progresso.total}
+              {progresso.skipped > 0 ? ` (+ ${progresso.skipped} já tinham recebido, pulados)` : ''}
+              {'\n\n'}⚠️ {progresso.pendentesRevisaoManual.length} holerite(s) com nome incerto NÃO serão enviados automaticamente — confira o PDF na mão pra:{'\n'}
               {progresso.pendentesRevisaoManual.map((nome) => `• ${nome}`).join('\n')}
             </div>
+          ) : (
+            <p style={{ fontSize: 13, color: '#64748b', marginTop: 6 }}>
+              {progresso.processed} enviados
+              {progresso.failed > 0 ? `, ${progresso.failed} com erro` : ''} de {progresso.total}
+              {progresso.skipped > 0 ? ` (+ ${progresso.skipped} já tinham recebido, pulados)` : ''}
+            </p>
           )}
         </div>
       )}
