@@ -47,6 +47,13 @@
   border-left: 4px solid #dc3545;
 }
 
+.response-warning {
+  background-color: #fff3cd;
+  color: #664d03;
+  border-left: 4px solid #f59e0b;
+  white-space: pre-line;
+}
+
 .form-section {
   margin-bottom: 20px;
 }

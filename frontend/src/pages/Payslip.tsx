@@ -18,6 +18,10 @@ interface DistribuicaoResponse {
   skipped?: number;
   total: number;
   unidade: string;
+  // Nomes com match de baixa confiança (fuzzy) — o sistema NÃO envia esses
+  // sozinho, precisa conferir o PDF original na mão e enviar manualmente
+  // pra pessoa certa antes de considerar esse envio completo.
+  pendentesRevisaoManual?: string[];
 }
 
 interface ProgressoEnvio {
@@ -25,6 +29,7 @@ interface ProgressoEnvio {
   failed: number;
   skipped: number;
   total: number;
+  pendentesRevisaoManual?: string[];
 }
 
 /**
@@ -62,7 +67,13 @@ async function lerRespostaDistribuicao(
 
       const evt = JSON.parse(rawEvent.slice(5).trim());
       if (evt.type === 'progress' || evt.type === 'start') {
-        onProgress({ processed: evt.processed ?? 0, failed: evt.failed ?? 0, skipped: evt.skipped ?? 0, total: evt.total });
+        onProgress({
+          processed: evt.processed ?? 0,
+          failed: evt.failed ?? 0,
+          skipped: evt.skipped ?? 0,
+          total: evt.total,
+          pendentesRevisaoManual: evt.pendentesRevisaoManual,
+        });
       } else if (evt.type === 'done' || evt.type === 'error') {
         final = evt;
       }
@@ -87,7 +98,7 @@ export function Payslip() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState(false);
-  const [response, setResponse] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [response, setResponse] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null);
   const [selectedColaboradores, setSelectedColaboradores] = useState<string[]>([]);
   const [previewColaborador, setPreviewColaborador] = useState<Colaborador | null>(null);
   const [progresso, setProgresso] = useState<ProgressoEnvio | null>(null);
@@ -182,10 +193,23 @@ export function Payslip() {
 
       if (result.success) {
         const puladosTxt = result.skipped ? ` (${result.skipped} já tinham recebido, pulados)` : '';
-        setResponse({
-          type: 'success',
-          text: `OK - ${result.processed} holerites distribuidos para ${result.unidade}${puladosTxt}`
-        });
+        const temPendencia = result.pendentesRevisaoManual && result.pendentesRevisaoManual.length > 0;
+
+        if (temPendencia) {
+          setResponse({
+            type: 'warning',
+            text:
+              `⚠️ ${result.processed} holerites enviados para ${result.unidade}${puladosTxt}.\n\n` +
+              `${result.pendentesRevisaoManual!.length} holerite(s) NÃO foram enviados — o sistema não teve certeza suficiente de quem é a página e não quis arriscar mandar pra pessoa errada:\n` +
+              result.pendentesRevisaoManual!.map((nome) => `• ${nome}`).join('\n') +
+              `\n\nConfira o PDF original pra identificar de quem é cada página e envie manualmente pra essa(s) pessoa(s).`,
+          });
+        } else {
+          setResponse({
+            type: 'success',
+            text: `OK - ${result.processed} holerites distribuidos para ${result.unidade}${puladosTxt}`
+          });
+        }
         setFile(null);
         setUnidade('');
         setTodosColaboradores([]);
@@ -390,6 +414,12 @@ export function Payslip() {
             {progresso.failed > 0 ? `, ${progresso.failed} com erro` : ''} de {progresso.total}
             {progresso.skipped > 0 ? ` (+ ${progresso.skipped} já tinham recebido, pulados)` : ''}
           </p>
+          {progresso.pendentesRevisaoManual && progresso.pendentesRevisaoManual.length > 0 && (
+            <div className="response response-warning" style={{ marginTop: 10 }}>
+              ⚠️ {progresso.pendentesRevisaoManual.length} holerite(s) com nome incerto NÃO serão enviados automaticamente — confira o PDF na mão pra:{'\n'}
+              {progresso.pendentesRevisaoManual.map((nome) => `• ${nome}`).join('\n')}
+            </div>
+          )}
         </div>
       )}
 
